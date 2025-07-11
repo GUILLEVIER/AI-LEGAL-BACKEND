@@ -1,4 +1,4 @@
-# legalback
+# backend
 
 Sistema de gestión de documentos legales basado en Django y Django REST Framework.
 
