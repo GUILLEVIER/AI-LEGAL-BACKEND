@@ -2,7 +2,7 @@ services:
   # Database Service (PostgreSQL)
   postgres:
     image: postgres:17.4-alpine3.21
-    container_name: legalback
+    container_name: backend
     restart: on-failure
     environment:
       - DATABASE_HOST=127.0.0.1
