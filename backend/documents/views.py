@@ -1,11 +1,12 @@
 from rest_framework import generics
 from .models import (
     TipoDocumento, Documentos, Favoritos, Compartir, Escritos, Demandas, Contratos,
-    Clasificacion, Plantillas
+    Clasificacion, Plantillas, Tribunales
 )
 from .serializers import (
     TipoDocumentoSerializer, DocumentosSerializer, FavoritosSerializer, CompartirSerializer,
-    EscritosSerializer, DemandasSerializer, ContratosSerializer, ClasificacionSerializer, PlantillasSerializer
+    EscritosSerializer, DemandasSerializer, ContratosSerializer, ClasificacionSerializer, PlantillasSerializer,
+    TribunalesSerializer
 )
 
 class TipoDocumentoListAPIView(generics.ListCreateAPIView):
@@ -110,3 +111,7 @@ class ClasificacionListAPIView(generics.ListCreateAPIView):
 class PlantillasListAPIView(generics.ListCreateAPIView):
     queryset = Plantillas.objects.all() # type: ignore
     serializer_class = PlantillasSerializer
+
+class TribunalesListAPIView(generics.ListCreateAPIView):
+    queryset = Tribunales.objects.all() # type: ignore
+    serializer_class = TribunalesSerializer
