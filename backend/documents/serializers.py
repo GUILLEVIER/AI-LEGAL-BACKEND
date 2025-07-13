@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     TipoDocumento, Documentos, Favoritos, Compartir, Escritos, Demandas, Contratos,
-    Clasificacion, Plantillas, Tribunales
+    Clasificacion, Plantillas
 )
 from users.serializers import UsuariosSerializer
 
@@ -54,9 +54,4 @@ class ClasificacionSerializer(serializers.ModelSerializer):
 class PlantillasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plantillas
-        fields = '__all__'
-
-class TribunalesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Tribunales
         fields = '__all__'

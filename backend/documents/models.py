@@ -1,21 +1,7 @@
 from django.db import models
 from users.models import Usuarios
 from companies.models import Empresas
-
-
-class Tribunales(models.Model):
-    id = models.AutoField(primary_key=True)
-    nombre = models.CharField(max_length=250, null=False, blank=False)
-    fechaCreacion = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        managed = True
-        db_table = 'tribunales'
-        verbose_name_plural = 'Tribunales'
-
-    def __str__(self):
-        txt = "{0}"
-        return txt.format(self.nombre)
+from companies.models import Tribunales
 
 
 class TipoDocumento(models.Model):
