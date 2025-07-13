@@ -30,9 +30,9 @@ urlpatterns = [
     re_path("docs<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"),
     re_path("docs/", schema_view.with_ui("swagger", cache_timeout=0), name="schema-swagger-ui"),
     re_path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
-    re_path('api/users/', include('users.urls')),
-    re_path('api/companies/', include('companies.urls')),
-    re_path('api/documents/', include('documents.urls')),
+    re_path('users/v1/', include('users.urls')),
+    re_path('companies/v1/', include('companies.urls')),
+    re_path('documents/v1/', include('documents.urls')),
 ]
 
 if settings.DEBUG:
