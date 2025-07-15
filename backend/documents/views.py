@@ -212,7 +212,7 @@ def convert_docx_to_html(request):
             html += "</ul>"
         html += ""
         return HttpResponse({
-            f"<pre>\n{html}</pre>"
+            f"<pre>\n{html}\n</pre>"
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
@@ -346,7 +346,7 @@ def convert_image_to_text(request):
 @parser_classes([MultiPartParser])
 def convert_pdf_to_html(request):
     if 'file' not in request.FILES:
-        print(request.FILES)
+
         return Response(
             {'error': 'No file provided'},
             status=status.HTTP_400_BAD_REQUEST
