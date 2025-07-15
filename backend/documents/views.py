@@ -229,7 +229,7 @@ def convert_docx_to_html(request):
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser])
-def convert_image_to_text(request):
+def convert_image_to_html(request):
     serializer = FileUploadSerializer(data=request.data)
     if serializer.is_valid():
         uploaded_file = serializer.validated_data['file']
