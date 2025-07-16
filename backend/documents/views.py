@@ -12,6 +12,9 @@ from rest_framework import status
 import docx
 from docx.oxml.table import CT_Tbl
 from docx.oxml.text.paragraph import CT_P
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 
 from .models import (
     TipoDocumento, Documentos, Favoritos, Compartir, Escritos, Demandas, Contratos,
@@ -139,9 +142,9 @@ class PlantillasListAPIView(generics.ListCreateAPIView):
 def iter_block_items(parent):
     for child in parent.element.body.iterchildren():
         if isinstance(child, CT_P):
-            yield docx.text.paragraph.Paragraph(child, parent)
+            yield Paragraph(child, parent)
         elif isinstance(child, CT_Tbl):
-            yield docx.table.Table(child, parent)
+            yield Table(child, parent)
 
 
 def is_list_paragraph(paragraph):
@@ -173,7 +176,7 @@ def convert_docx_to_html(request):
             html = ""
             in_list = False
             for block in iter_block_items(doc):
-                if isinstance(block, docx.table.Table):
+                if isinstance(block, Table):
                     html += "<table border='1' style='border-collapse:collapse;margin:10px 0;'>"
                     for row in block.rows:
                         html += "<tr>"
@@ -186,11 +189,11 @@ def convert_docx_to_html(request):
                     style = p.style.name.lower()
                     text = p.text.replace(" ", "&nbsp;")
                     align = ""
-                    if p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.CENTER:
+                    if p.alignment == WD_ALIGN_PARAGRAPH.CENTER:
                         align = "text-align:center;"
-                    elif p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.RIGHT:
+                    elif p.alignment == WD_ALIGN_PARAGRAPH.RIGHT:
                         align = "text-align:right;"
-                    elif p.alignment == docx.enum.text.WD_ALIGN_PARAGRAPH.JUSTIFY:
+                    elif p.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY:
                         align = "text-align:justify;"
                     indent = ""
                     if p.paragraph_format.first_line_indent:
@@ -215,9 +218,7 @@ def convert_docx_to_html(request):
             if in_list:
                 html += "</ul>"
             html += ""
-            return HttpResponse({
-                f"<pre>\n{html}\n</pre>"
-            }, status=status.HTTP_200_OK)
+            return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {'error': f'Conversion failed: {str(e)}'},
@@ -287,9 +288,7 @@ def convert_image_to_html(request):
                     line_text += word['text']
                     prev_right = word['left'] + word['width']
                 result += line_text + "\n"
-            return HttpResponse({
-                f"<pre>\n{result}</pre>"
-            }, status=status.HTTP_200_OK)
+            return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {'error': f'Conversion failed: {str(e)}'},
@@ -345,9 +344,7 @@ def convert_pdf_to_html(request):
                         line += word['text']
                         prev_x1 = word['x1']
                     result += line + "\n"
-            return HttpResponse({
-                f"<pre>\n{result}</pre>"
-            }, status=status.HTTP_200_OK)
+            return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {'error': f'Conversion failed: {str(e)}'},
