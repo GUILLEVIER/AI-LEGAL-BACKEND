@@ -1,0 +1,22 @@
+# Configuración del Generador de Documentos
+# Copia este archivo como .env en el directorio backend
+
+# Configuración del Backend Django
+DEBUG=True
+SECRET_KEY=your-secret-key-here
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Configuración de la Base de Datos
+DATABASE_URL=sqlite:///db.sqlite3
+
+# Configuración de Archivos
+MEDIA_URL=/media/
+MEDIA_ROOT=media/
+
+# Configuración CORS
+CORS_ALLOW_ALL_ORIGINS=True
+CORS_ALLOW_CREDENTIALS=True
+
+# Configuración del Frontend
+REACT_APP_API_URL=http://localhost:8000/api
+REACT_APP_BACKEND_URL=http://localhost:8000 
