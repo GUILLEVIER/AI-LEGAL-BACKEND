@@ -16,7 +16,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-from core.exceptions import BusinessLogicError, CustomValidationError
+from core.utils import success_response, error_response
 
 from .models import (
     TipoDocumento, Documentos, Favoritos, Compartir, Escritos, Demandas, Contratos,
@@ -168,7 +168,7 @@ def convert_docx_to_html(request):
         uploaded_file = serializer.validated_data['file']
         # Check if file is a DOCX
         if not uploaded_file.name.endswith('.docx'):
-            raise BusinessLogicError("Solo se permiten archivos .docx", code="INVALID_FILE_TYPE")
+            return error_response("Solo se permiten archivos .docx")
         try:
             # Read the uploaded file
             doc = docx.Document(uploaded_file.file)
@@ -217,11 +217,14 @@ def convert_docx_to_html(request):
             if in_list:
                 html += "</ul>"
             html += ""
-            return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
+            return success_response(data=html, message="Operación realizada con éxito", code="200", http_status=200)
+            #return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
         except Exception as e:
-            raise BusinessLogicError(f"Error en la conversión: {str(e)}", code="CONVERSION_ERROR")
+            return error_response(f"Error en la conversión: {str(e)}")
+            #raise BusinessLogicError(f"Error en la conversión: {str(e)}", code="CONVERSION_ERROR")
     else:
-        raise CustomValidationError(serializer.errors)
+        return error_response(serializer.errors)
+        #raise CustomValidationError(serializer.errors)
 
 
 @api_view(['POST'])
@@ -232,7 +235,7 @@ def convert_image_to_html(request):
         uploaded_file = serializer.validated_data['file']
         # Check if file is a PNG
         if not uploaded_file.name.endswith('.png'):
-            raise BusinessLogicError("Solo se permiten archivos .png", code="INVALID_FILE_TYPE")
+            return error_response("Solo se permiten archivos .png")
         try:
             # Read the uploaded file
             image_bytes = uploaded_file.read()
@@ -257,7 +260,7 @@ def convert_image_to_html(request):
                         'top': ocr_data['top'][i],
                         'width': ocr_data['width'][i]
                     })
-            result = ""
+            html = ""
             for key in sorted(lines.keys(), key=lambda k: (k[0], k[1], k[2])):
                 line = lines[key]
                 if not line:
@@ -280,12 +283,13 @@ def convert_image_to_html(request):
                         line_text += " "
                     line_text += word['text']
                     prev_right = word['left'] + word['width']
-                result += line_text + "\n"
-            return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
+                html += line_text + "\n"
+            return success_response(data=html, message="Operación realizada con éxito", code="200", http_status=200)
+            #return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
         except Exception as e:
-            raise BusinessLogicError(f"Error en la conversión: {str(e)}", code="CONVERSION_ERROR")
+            return error_response(f"Error en la conversión: {str(e)}")
     else:
-        raise CustomValidationError(serializer.errors)
+        return error_response(serializer.errors)
 
 
 @api_view(['POST'])
@@ -296,13 +300,13 @@ def convert_pdf_to_html(request):
         uploaded_file = serializer.validated_data['file']
         # Check if file is a PDF
         if not uploaded_file.name.endswith('.pdf'):
-            raise BusinessLogicError("Solo se permiten archivos .pdf", code="INVALID_FILE_TYPE")
+           return error_response("Solo se permiten archivos .pdf")
         try:
             # Read the uploaded file
             pdf_bytes = uploaded_file.read()
             pdf_buffer = io.BytesIO(pdf_bytes)
             pdf = pdfplumber.open(pdf_buffer)
-            result = ""
+            html = ""
             for page in pdf.pages:
                 words = page.extract_words()
                 # Agrupa palabras por línea (top)
@@ -330,9 +334,10 @@ def convert_pdf_to_html(request):
                                 line += " "
                         line += word['text']
                         prev_x1 = word['x1']
-                    result += line + "\n"
-            return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
+                    html += line + "\n"
+            return success_response(data=html, message="Operación realizada con éxito", code="200", http_status=200)
+            #return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
         except Exception as e:
-            raise BusinessLogicError(f"Error en la conversión: {str(e)}", code="CONVERSION_ERROR")
+            return error_response(f"Error en la conversión: {str(e)}")
     else:
-        raise CustomValidationError(serializer.errors)
+        return error_response(serializer.errors)
