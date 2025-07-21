@@ -16,7 +16,7 @@ def success_response(data=None, message="Operación exitosa", code="success", ht
 
 def error_response(errors=None, message="Ocurrió un error", code="error", http_status=status.HTTP_400_BAD_REQUEST, data=None):
     """
-    Devuelve una respuesta estándar para errores personalizados.
+    Devuelve una respuesta estándar para errores.
     """
     # Acepta errors como string o lista
     if isinstance(errors, str):
