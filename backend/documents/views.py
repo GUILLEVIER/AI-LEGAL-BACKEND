@@ -215,7 +215,7 @@ def convert_docx_to_html(request):
             if in_list:
                 html += "</ul>"
             html += ""
-            return success_response(data=html, message="Operación realizada con éxito", code="200", http_status=status.HTTP_200_OK)
+            return success_response(data=html, message="Operación realizada con éxito", code="success", http_status=status.HTTP_200_OK)
             #return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
         except Exception as e:
             return error_response(f"Error en la conversión: {str(e)}")
@@ -282,7 +282,7 @@ def convert_image_to_html(request):
                     line_text += word['text']
                     prev_right = word['left'] + word['width']
                 html += line_text + "\n"
-            return success_response(data=html, message="Operación realizada con éxito", code="200", http_status=200)
+            return success_response(data=html, message="Operación realizada con éxito", code="success", http_status=200)
             #return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
         except Exception as e:
             return error_response(f"Error en la conversión: {str(e)}")
@@ -333,7 +333,7 @@ def convert_pdf_to_html(request):
                         line += word['text']
                         prev_x1 = word['x1']
                     html += line + "\n"
-            return success_response(data=html, message="Operación realizada con éxito", code="200", http_status=200)
+            return success_response(data=html, message="Operación realizada con éxito", code="success", http_status=200)
             #return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
         except Exception as e:
             return error_response(f"Error en la conversión: {str(e)}")
