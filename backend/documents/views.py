@@ -2,11 +2,9 @@ import io
 import pdfplumber
 import pytesseract
 from PIL import Image
-from django.http import HttpResponse
 from rest_framework import generics
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser
-from rest_framework.response import Response
 from rest_framework import status
 
 import docx
@@ -217,7 +215,7 @@ def convert_docx_to_html(request):
             if in_list:
                 html += "</ul>"
             html += ""
-            return success_response(data=html, message="Operación realizada con éxito", code="200", http_status=200)
+            return success_response(data=html, message="Operación realizada con éxito", code="200", http_status=status.HTTP_200_OK)
             #return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
         except Exception as e:
             return error_response(f"Error en la conversión: {str(e)}")
