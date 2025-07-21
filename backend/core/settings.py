@@ -168,6 +168,7 @@ REST_FRAMEWORK = {
     ],
     "SEARCH_PARAM": 'q',
     "ORDERING_PARAM": 'order-by',
+    "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
 }
 
 REST_AUTH = {

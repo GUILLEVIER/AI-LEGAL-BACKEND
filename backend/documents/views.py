@@ -16,6 +16,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
+from core.exceptions import BusinessLogicError, CustomValidationError
+
 from .models import (
     TipoDocumento, Documentos, Favoritos, Compartir, Escritos, Demandas, Contratos,
     Clasificacion, Plantillas
@@ -166,10 +168,7 @@ def convert_docx_to_html(request):
         uploaded_file = serializer.validated_data['file']
         # Check if file is a DOCX
         if not uploaded_file.name.endswith('.docx'):
-            return Response(
-                {'error': 'Only .docx files are allowed'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise BusinessLogicError("Solo se permiten archivos .docx", code="INVALID_FILE_TYPE")
         try:
             # Read the uploaded file
             doc = docx.Document(uploaded_file.file)
@@ -220,12 +219,9 @@ def convert_docx_to_html(request):
             html += ""
             return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
         except Exception as e:
-            return Response(
-                {'error': f'Conversion failed: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            raise BusinessLogicError(f"Error en la conversión: {str(e)}", code="CONVERSION_ERROR")
     else:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        raise CustomValidationError(serializer.errors)
 
 
 @api_view(['POST'])
@@ -236,10 +232,7 @@ def convert_image_to_html(request):
         uploaded_file = serializer.validated_data['file']
         # Check if file is a PNG
         if not uploaded_file.name.endswith('.png'):
-            return Response(
-                {'error': 'Only .png files are allowed'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise BusinessLogicError("Solo se permiten archivos .png", code="INVALID_FILE_TYPE")
         try:
             # Read the uploaded file
             image_bytes = uploaded_file.read()
@@ -290,12 +283,9 @@ def convert_image_to_html(request):
                 result += line_text + "\n"
             return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
         except Exception as e:
-            return Response(
-                {'error': f'Conversion failed: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            raise BusinessLogicError(f"Error en la conversión: {str(e)}", code="CONVERSION_ERROR")
     else:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        raise CustomValidationError(serializer.errors)
 
 
 @api_view(['POST'])
@@ -306,10 +296,7 @@ def convert_pdf_to_html(request):
         uploaded_file = serializer.validated_data['file']
         # Check if file is a PDF
         if not uploaded_file.name.endswith('.pdf'):
-            return Response(
-                {'error': 'Only .pdf files are allowed'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise BusinessLogicError("Solo se permiten archivos .pdf", code="INVALID_FILE_TYPE")
         try:
             # Read the uploaded file
             pdf_bytes = uploaded_file.read()
@@ -346,9 +333,6 @@ def convert_pdf_to_html(request):
                     result += line + "\n"
             return HttpResponse(f"<pre>\n{result}</pre>", status=status.HTTP_200_OK)
         except Exception as e:
-            return Response(
-                {'error': f'Conversion failed: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            raise BusinessLogicError(f"Error en la conversión: {str(e)}", code="CONVERSION_ERROR")
     else:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        raise CustomValidationError(serializer.errors)
