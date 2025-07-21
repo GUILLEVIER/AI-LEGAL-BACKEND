@@ -6,7 +6,7 @@ def custom_exception_handler(exc, context):
     if response is not None:
         code = getattr(exc, 'code', None)
         http_status = response.status_code
-        # Extrae los mensajes de error como antes
+        # Extrae los mensajes de error
         error_messages = []
         if isinstance(response.data, dict):
             for field, errors in response.data.items():
