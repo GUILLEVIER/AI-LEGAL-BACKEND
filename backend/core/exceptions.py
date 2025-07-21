@@ -16,7 +16,7 @@ def custom_exception_handler(exc, context):
                     error_messages.append(str(errors))
         else:
             error_messages = [str(response.data)]
-        # Usa tu helper para la respuesta
+        # Usa el helper para la respuesta
         return error_response(
             errors=error_messages,
             message="Ocurrió un error",
