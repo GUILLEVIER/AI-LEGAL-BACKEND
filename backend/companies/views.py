@@ -9,107 +9,72 @@ from rest_framework.response import Response
 from .paginations import CustomPagination
 from core.mixins import StandardResponseMixin
 
-class EmpresasListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
+class EmpresasViewSet(StandardResponseMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Empresas.objects.all() # type: ignore
     serializer_class = EmpresasSerializer
     filter_backends = [SearchFilter, OrderingFilter]
     #^quecomience
     search_fields = ['^nombre', 'rut', 'fechaCreacion']
     ordering_fields = ['id', 'nombre']
+    #http_method_names = ['get', 'head', 'options']
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de empresas",
-                    code="empresas_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de empresas obtenido correctamente",
-                code="empresas_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de empresas",
-                code="empresas_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de empresas",
+            unpaginated_message="Listado de empresas obtenido correctamente",
+            code="empresas_list",
+            error_code="empresas_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Empresa creada exitosamente",
-                code="empresa_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear la empresa",
-                code="empresa_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Empresa creada exitosamente",
+            code="empresa_created",
+            error_message="Error al crear la empresa",
+            error_code="empresa_create_error",
+            http_status=201,
+            **kwargs
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        return Response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, *args, **kwargs):
+        return Response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 class PlanesListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     queryset = Planes.objects.all() # type: ignore
     serializer_class = PlanesSerializer
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de planes",
-                    code="planes_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de planes obtenido correctamente",
-                code="planes_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de planes",
-                code="planes_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de planes",
+            unpaginated_message="Listado de planes obtenido correctamente",
+            code="planes_list",
+            error_code="planes_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Plan creado exitosamente",
-                code="plan_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear el plan",
-                code="plan_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Plan creado exitosamente",
+            code="plan_created",
+            error_message="Error al crear el plan",
+            error_code="plan_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 """
 # mixins
@@ -199,46 +164,25 @@ class TribunalesListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     serializer_class = TribunalesSerializer
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de tribunales",
-                    code="tribunales_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de tribunales obtenido correctamente",
-                code="tribunales_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de planes",
-                code="planes_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de tribunales",
+            unpaginated_message="Listado de tribunales obtenido correctamente",
+            code="tribunales_list",
+            error_code="tribunales_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Tribunal creado exitosamente",
-                code="tribunal_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear el tribunal",
-                code="tribunal_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Tribunal creado exitosamente",
+            code="tribunal_created",
+            error_message="Error al crear el tribunal",
+            error_code="tribunal_create_error",
+            http_status=201,
+            **kwargs
+        )

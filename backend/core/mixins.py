@@ -20,3 +20,47 @@ class StandardResponseMixin:
             code="unexpected_error",
             http_status=500
         )
+
+    def paginated_list_response(self, request, queryset, serializer_class, paginated_message, unpaginated_message, code, error_code):
+        try:
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = serializer_class(page, many=True)
+                paginated = self.get_paginated_response(serializer.data).data
+                return self.success_response(
+                    data=paginated,
+                    message=paginated_message,
+                    code=code,
+                    http_status=200
+                )
+            serializer = serializer_class(queryset, many=True)
+            return self.success_response(
+                data=serializer.data,
+                message=unpaginated_message,
+                code=code,
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener el listado",
+                code=error_code,
+                http_status=500
+            )
+
+    def standard_create_response(self, request, *args, success_message="Creado exitosamente", code="created", error_message="Error al crear", error_code="create_error", http_status=201, **kwargs):
+        try:
+            response = super().create(request, *args, **kwargs)
+            return self.success_response(
+                data=response.data,
+                message=success_message,
+                code=code,
+                http_status=http_status
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message=error_message,
+                code=error_code,
+                http_status=400
+            )

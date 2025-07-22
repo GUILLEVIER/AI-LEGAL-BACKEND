@@ -31,49 +31,28 @@ class TipoDocumentoListAPIView(StandardResponseMixin, generics.ListCreateAPIView
     serializer_class = TipoDocumentoSerializer
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de tipos de documento",
-                    code="tipo_documento_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de tipos de documento obtenido correctamente",
-                code="tipo_documento_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de tipos de documento",
-                code="tipo_documento_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de tipos de documento",
+            unpaginated_message="Listado de tipos de documento obtenido correctamente",
+            code="tipo_documento_list",
+            error_code="tipo_documento_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Tipo de documento creado exitosamente",
-                code="tipo_documento_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear el tipo de documento",
-                code="tipo_documento_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Tipo de documento creado exitosamente",
+            code="tipo_documento_created",
+            error_message="Error al crear el tipo de documento",
+            error_code="tipo_documento_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 class DocumentosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
@@ -92,49 +71,28 @@ class DocumentosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
         serializer.save(created_by=usuario)
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de documentos",
-                    code="documentos_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de documentos obtenido correctamente",
-                code="documentos_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de documentos",
-                code="documentos_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de documentos",
+            unpaginated_message="Listado de documentos obtenido correctamente",
+            code="documentos_list",
+            error_code="documentos_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Documento creado exitosamente",
-                code="documento_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear el documento",
-                code="documento_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Documento creado exitosamente",
+            code="documento_created",
+            error_message="Error al crear el documento",
+            error_code="documento_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 class FavoritosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
@@ -153,49 +111,28 @@ class FavoritosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
         serializer.save(usuario=usuario)
     
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de favoritos",
-                    code="favoritos_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de favoritos obtenido correctamente",
-                code="favoritos_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de favoritos",
-                code="favoritos_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de favoritos",
+            unpaginated_message="Listado de favoritos obtenido correctamente",
+            code="favoritos_list",
+            error_code="favoritos_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Favorito agregado exitosamente",
-                code="favorito_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al agregar el favorito",
-                code="favorito_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Favorito agregado exitosamente",
+            code="favorito_created",
+            error_message="Error al agregar el favorito",
+            error_code="favorito_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 class CompartirListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
@@ -215,49 +152,28 @@ class CompartirListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
         serializer.save(usuario=usuario)
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de compartidos",
-                    code="compartir_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de compartidos obtenido correctamente",
-                code="compartir_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de compartidos",
-                code="compartir_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de compartidos",
+            unpaginated_message="Listado de compartidos obtenido correctamente",
+            code="compartir_list",
+            error_code="compartir_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Documento compartido exitosamente",
-                code="compartir_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al compartir el documento",
-                code="compartir_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Documento compartido exitosamente",
+            code="compartir_created",
+            error_message="Error al compartir el documento",
+            error_code="compartir_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 class EscritosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
@@ -276,49 +192,28 @@ class EscritosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
         serializer.save(created_by=usuario)
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de escritos",
-                    code="escritos_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de escritos obtenido correctamente",
-                code="escritos_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de escritos",
-                code="escritos_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de escritos",
+            unpaginated_message="Listado de escritos obtenido correctamente",
+            code="escritos_list",
+            error_code="escritos_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Escrito creado exitosamente",
-                code="escrito_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear el escrito",
-                code="escrito_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Escrito creado exitosamente",
+            code="escrito_created",
+            error_message="Error al crear el escrito",
+            error_code="escrito_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 class DemandasListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
@@ -337,49 +232,28 @@ class DemandasListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
         serializer.save(created_by=usuario)
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de demandas",
-                    code="demandas_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de demandas obtenido correctamente",
-                code="demandas_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de demandas",
-                code="demandas_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de demandas",
+            unpaginated_message="Listado de demandas obtenido correctamente",
+            code="demandas_list",
+            error_code="demandas_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Demanda creada exitosamente",
-                code="demanda_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear la demanda",
-                code="demanda_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Demanda creada exitosamente",
+            code="demanda_created",
+            error_message="Error al crear la demanda",
+            error_code="demanda_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 class ContratosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
@@ -398,49 +272,28 @@ class ContratosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
         serializer.save(created_by=usuario)
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de contratos",
-                    code="contratos_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de contratos obtenido correctamente",
-                code="contratos_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de contratos",
-                code="contratos_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de contratos",
+            unpaginated_message="Listado de contratos obtenido correctamente",
+            code="contratos_list",
+            error_code="contratos_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Contrato creado exitosamente",
-                code="contrato_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear el contrato",
-                code="contrato_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Contrato creado exitosamente",
+            code="contrato_created",
+            error_message="Error al crear el contrato",
+            error_code="contrato_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 class ClasificacionListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
@@ -448,49 +301,28 @@ class ClasificacionListAPIView(StandardResponseMixin, generics.ListCreateAPIView
     serializer_class = ClasificacionSerializer
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de clasificaciones",
-                    code="clasificacion_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de clasificaciones obtenido correctamente",
-                code="clasificacion_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de clasificaciones",
-                code="clasificacion_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de clasificaciones",
+            unpaginated_message="Listado de clasificaciones obtenido correctamente",
+            code="clasificacion_list",
+            error_code="clasificacion_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Clasificación creada exitosamente",
-                code="clasificacion_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear la clasificación",
-                code="clasificacion_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Clasificación creada exitosamente",
+            code="clasificacion_created",
+            error_message="Error al crear la clasificación",
+            error_code="clasificacion_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 class PlantillasListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
@@ -498,49 +330,28 @@ class PlantillasListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     serializer_class = PlantillasSerializer
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de plantillas",
-                    code="plantillas_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de plantillas obtenido correctamente",
-                code="plantillas_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de plantillas",
-                code="plantillas_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de plantillas",
+            unpaginated_message="Listado de plantillas obtenido correctamente",
+            code="plantillas_list",
+            error_code="plantillas_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Plantilla creada exitosamente",
-                code="plantilla_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear la plantilla",
-                code="plantilla_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Plantilla creada exitosamente",
+            code="plantilla_created",
+            error_message="Error al crear la plantilla",
+            error_code="plantilla_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 
 def iter_block_items(parent):
