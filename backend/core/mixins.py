@@ -8,14 +8,35 @@ class StandardResponseMixin:
         return success_response(data=data, message=message, code=code, http_status=http_status, errors=errors)
 
     def error_response(self, errors=None, message="Ocurrió un error", code="error", http_status=400, data=None):
-        return error_response(errors=errors, message=message, code=code, http_status=http_status, data=data)
+        simple_error = self.extract_first_error_message(errors)
+        return error_response(
+            errors=simple_error,
+            message=message,
+            code=code,
+            http_status=http_status,
+            data=data
+        )
+
+    def extract_first_error_message(self, errors):
+        # Si es un dict, busca el primer mensaje
+        if isinstance(errors, dict):
+            for field, messages in errors.items():
+                print(field)
+                if isinstance(messages, list) and messages:
+                    return str(messages[0])
+                return str(messages)
+        # Si es una lista, devuelve el primer elemento
+        if isinstance(errors, list) and errors:
+            return str(errors[0])
+        # Si es un string, devuélvelo tal cual
+        return str(errors)
 
     def handle_exception(self, exc):
         """
         Sobrescribe el manejo de excepciones para devolver error_response.
         """
         return self.error_response(
-            errors=str(exc),
+            errors="Esta tratando de realizar una operación no Autorizada, contacte al adminitrador.",
             message="Ocurrió un error inesperado",
             code="unexpected_error",
             http_status=500

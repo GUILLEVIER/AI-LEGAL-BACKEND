@@ -8,8 +8,8 @@ router.register('empresas', EmpresasViewSet, basename='empresas')
 
 urlpatterns = [
     #path('empresas/', EmpresasViewSet.as_view(), name='empresas-list'),
-    path('planes/', PlanesListAPIView.as_view(), name='planes-list'),
-    path('tribunales/', TribunalesListAPIView.as_view(), name='tribunales-list'),
+    #path('planes/', PlanesListAPIView.as_view(), name='planes-list'),
+    #path('tribunales/', TribunalesListAPIView.as_view(), name='tribunales-list'),
 
     # generics
     #path('tribunales/', TribunalesListAPIView.as_view(), name='tribunales-list'),
