@@ -1,19 +1,82 @@
 from rest_framework import generics
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView
-
+from core.mixins import StandardResponseMixin
 from core.utils import success_response, error_response
 from .models import Usuarios
 from .serializers import UsuariosSerializer
 
-class UsuariosListAPIView(generics.ListCreateAPIView):
+class UsuariosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     queryset = Usuarios.objects.all() # type: ignore
     serializer_class = UsuariosSerializer
 
-class UsuarioDetailAPIView(generics.RetrieveAPIView):
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                paginated = self.get_paginated_response(serializer.data).data
+                return self.success_response(
+                    data=paginated,
+                    message="Listado paginado de usuarios",
+                    code="usuarios_list",
+                    http_status=200
+                )
+            serializer = self.get_serializer(queryset, many=True)
+            return self.success_response(
+                data=serializer.data,
+                message="Listado de usuarios obtenido correctamente",
+                code="usuarios_list",
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener el listado de usuarios",
+                code="usuarios_list_error",
+                http_status=500
+            )
+
+    def create(self, request, *args, **kwargs):
+        try:
+            response = super().create(request, *args, **kwargs)
+            return self.success_response(
+                data=response.data,
+                message="Usuario creado exitosamente",
+                code="usuario_created",
+                http_status=201
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al crear el usuario",
+                code="usuario_create_error",
+                http_status=400
+            )
+
+class UsuarioDetailAPIView(StandardResponseMixin, generics.RetrieveAPIView):
     queryset = Usuarios.objects.all() # type: ignore
     serializer_class = UsuariosSerializer
     lookup_url_kwarg = 'usuario_id'
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return self.success_response(
+                data=serializer.data,
+                message="Detalle de usuario obtenido correctamente",
+                code="usuario_detail",
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener el detalle del usuario",
+                code="usuario_detail_error",
+                http_status=404
+            )
 
 class CustomLoginView(LoginView):
     def post(self, request, *args, **kwargs):
