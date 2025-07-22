@@ -11,49 +11,28 @@ class UsuariosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     serializer_class = UsuariosSerializer
 
     def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.filter_queryset(self.get_queryset())
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                paginated = self.get_paginated_response(serializer.data).data
-                return self.success_response(
-                    data=paginated,
-                    message="Listado paginado de usuarios",
-                    code="usuarios_list",
-                    http_status=200
-                )
-            serializer = self.get_serializer(queryset, many=True)
-            return self.success_response(
-                data=serializer.data,
-                message="Listado de usuarios obtenido correctamente",
-                code="usuarios_list",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el listado de usuarios",
-                code="usuarios_list_error",
-                http_status=500
-            )
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de usuarios",
+            unpaginated_message="Listado de usuarios obtenido correctamente",
+            code="usuarios_list",
+            error_code="usuarios_list_error"
+        )
 
     def create(self, request, *args, **kwargs):
-        try:
-            response = super().create(request, *args, **kwargs)
-            return self.success_response(
-                data=response.data,
-                message="Usuario creado exitosamente",
-                code="usuario_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear el usuario",
-                code="usuario_create_error",
-                http_status=400
-            )
+        return self.standard_create_response(
+            request,
+            *args,
+            success_message="Usuario creado exitosamente",
+            code="usuario_created",
+            error_message="Error al crear el usuario",
+            error_code="usuario_create_error",
+            http_status=201,
+            **kwargs
+        )
 
 class UsuarioDetailAPIView(StandardResponseMixin, generics.RetrieveAPIView):
     queryset = Usuarios.objects.all() # type: ignore
