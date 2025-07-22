@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from .paginations import CustomPagination
 from core.mixins import StandardResponseMixin
 
-class EmpresasViewSet(StandardResponseMixin, viewsets.ReadOnlyModelViewSet):
+class EmpresasViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     queryset = Empresas.objects.all() # type: ignore
     serializer_class = EmpresasSerializer
     filter_backends = [SearchFilter, OrderingFilter]
@@ -17,6 +17,24 @@ class EmpresasViewSet(StandardResponseMixin, viewsets.ReadOnlyModelViewSet):
     search_fields = ['^nombre', 'rut', 'fechaCreacion']
     ordering_fields = ['id', 'nombre']
     #http_method_names = ['get', 'head', 'options']
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return self.success_response(
+                data=serializer.data,
+                message="Detalle de usuario obtenido correctamente",
+                code="usuario_detail",
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener el detalle del usuario",
+                code="usuario_detail_error",
+                http_status=404
+            )
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -42,11 +60,19 @@ class EmpresasViewSet(StandardResponseMixin, viewsets.ReadOnlyModelViewSet):
             **kwargs
         )
 
+    def retrieve(self, request, *args, **kwargs):
+        return self.error_response(
+                errors="Método no permitido.",
+                message="Método no permitido.",
+                code="empresa_detail_error",
+                http_status=405
+            )
+
     def partial_update(self, request, *args, **kwargs):
-        return Response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        return self.error_response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def destroy(self, request, *args, **kwargs):
-        return Response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        return self.error_response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 class PlanesListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     queryset = Planes.objects.all() # type: ignore
