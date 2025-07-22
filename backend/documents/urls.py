@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     TipoDocumentoListAPIView, DocumentosListAPIView, FavoritosListAPIView, CompartirListAPIView,
     EscritosListAPIView, DemandasListAPIView, ContratosListAPIView, ClasificacionListAPIView,
-    PlantillasListAPIView, convert_docx_to_html, convert_image_to_html, convert_pdf_to_html
+    PlantillasListAPIView, ConvertDocxToHtmlView, ConvertImageToHtmlView, ConvertPdfToHtmlView
 )
 
 urlpatterns = [
@@ -15,7 +15,7 @@ urlpatterns = [
     path('contratos/', ContratosListAPIView.as_view(), name='contratos-list'),
     path('clasificacion/', ClasificacionListAPIView.as_view(), name='clasificacion-list'),
     path('plantillas/', PlantillasListAPIView.as_view(), name='plantillas-list'),
-    path('convert_docx_to_html/', convert_docx_to_html, name='convert_docx_to_html'),
-    path('convert_image_to_html/', convert_image_to_html, name='convert_image_to_html'),
-    path('convert_pdf_to_html/', convert_pdf_to_html, name='convert_pdf_to_html'),
+    path('docx_to_html/', ConvertDocxToHtmlView.as_view(), name='docx_to_html'),
+    path('image_to_html/', ConvertImageToHtmlView.as_view(), name='image_to_html'),
+    path('pdf_to_html/', ConvertPdfToHtmlView.as_view(), name='pdf_to_html'),
 ]
