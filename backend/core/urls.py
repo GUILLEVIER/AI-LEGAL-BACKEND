@@ -21,8 +21,12 @@ schema_view = get_schema_view(
     permission_classes=(permissions.AllowAny,),
 )
 
+admin.site.site_header = "ialegal Admin"
+admin.site.site_title = "ialegal Admin Portal"
+admin.site.index_title = "Bienvenido al portal de ialegal"
+
 urlpatterns = [
-    re_path('admin/', admin.site.urls),
+    re_path('adminailegal/', admin.site.urls),
     re_path(r'login/?$', CustomLoginView.as_view(), name='rest_login'),
     re_path(r'logout/?$', CustomLogoutView.as_view(), name='rest_logout'),
     re_path(r'password/change/?$', CustomPasswordChangeView.as_view(), name='rest_password_change'),
