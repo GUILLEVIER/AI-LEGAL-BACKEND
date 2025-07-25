@@ -7,7 +7,11 @@ from allauth.account.models import EmailAddress
 from rest_framework.authtoken.admin import TokenProxy
 from django.contrib.admin.sites import NotRegistered
 
-class CustomUserAdmin(UserAdmin):
+from unfold.admin import ModelAdmin
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
+
+
+class CustomUserAdmin(UserAdmin, ModelAdmin):
     fieldsets = (
         *UserAdmin.fieldsets, # type: ignore
         (
@@ -19,6 +23,9 @@ class CustomUserAdmin(UserAdmin):
             }
         )
     )
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
 
 
 admin.site.register(Usuarios, CustomUserAdmin)

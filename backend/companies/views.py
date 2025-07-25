@@ -24,15 +24,15 @@ class EmpresasViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             serializer = self.get_serializer(instance)
             return self.success_response(
                 data=serializer.data,
-                message="Detalle de usuario obtenido correctamente",
-                code="usuario_detail",
+                message="Detalle de empresa obtenida correctamente",
+                code="empresa_detail",
                 http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
-                message="Error al obtener el detalle del usuario",
-                code="usuario_detail_error",
+                message="Error al obtener el detalle de la empresa",
+                code="empresa_detail_error",
                 http_status=404
             )
 
