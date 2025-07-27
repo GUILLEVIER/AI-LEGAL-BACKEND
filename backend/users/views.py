@@ -4,7 +4,7 @@ from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView
 from core.mixins import StandardResponseMixin
 from core.utils import success_response, error_response
 from .models import Usuarios
-from .serializers import UsuariosSerializer
+from .serializers import UsuariosSerializer, CustomPasswordChangeSerializer
 
 class UsuariosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     queryset = Usuarios.objects.all() # type: ignore
@@ -117,6 +117,8 @@ class CustomTokenVerifyView(TokenVerifyView):
             )
 
 class CustomPasswordChangeView(PasswordChangeView):
+    serializer_class = CustomPasswordChangeSerializer
+    
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code in [200, 201]:
