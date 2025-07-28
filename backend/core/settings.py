@@ -167,6 +167,11 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": [
         'django_filters.rest_framework.DjangoFilterBackend'
     ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser',
+    ],
     "SEARCH_PARAM": 'q',
     "ORDERING_PARAM": 'order-by',
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
@@ -178,7 +183,7 @@ REST_AUTH = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
