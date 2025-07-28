@@ -23,7 +23,7 @@ Este proyecto permite la gestión de usuarios, empresas y documentos legales, co
 1. Clona el repositorio y entra al directorio:
    ```bash
    git clone <repo_url>
-   cd legalback
+   cd backend
    ```
 2. Crea y activa un entorno virtual:
    ```bash
@@ -61,7 +61,7 @@ python manage.py runserver
 ```
 
 ## Acceso a la administración
-- Panel: [http://localhost:8000/admin/](http://localhost:8000/admin/)
+- Panel: [http://localhost:8000/adminailegal/](http://localhost:8000/adminailegal/)
 - Solo se muestran los modelos relevantes; modelos de tokens, sitios y sociales están ocultos.
 
 ## API y documentación
