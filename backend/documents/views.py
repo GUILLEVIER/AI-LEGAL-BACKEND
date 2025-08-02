@@ -57,16 +57,23 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser)
 
     def list(self, request, *args, **kwargs):
-        """Listar documentos subidos con formato estándar"""
-        return self.paginated_list_response(
-            request=request,
-            queryset=self.get_queryset(),
-            serializer_class=self.serializer_class,
-            paginated_message="Documentos subidos obtenidos exitosamente (paginados)",
-            unpaginated_message="Documentos subidos obtenidos exitosamente",
-            code="documents_retrieved",
-            error_code="documents_error"
-        )
+        """Listar documentos subidos sin paginación"""
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return self.success_response(
+                data=serializer.data,
+                message="Documentos subidos obtenidos exitosamente",
+                code="documents_retrieved",
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener documentos subidos",
+                code="documents_error",
+                http_status=500
+            )
     
     def create(self, request, *args, **kwargs):
         """Crear documento subido con formato estándar"""
@@ -253,6 +260,89 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         return html
         #return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
 
+    def retrieve(self, request, *args, **kwargs):
+        """Obtener documento subido específico con formato estándar"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return self.success_response(
+                data=serializer.data,
+                message="Documento subido obtenido exitosamente",
+                code="available_field_retrieved",
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener el documento subido",
+                code="available_field_error",
+                http_status=500
+            )
+    
+    def update(self, request, *args, **kwargs):
+        """Actualizar documento subido con formato estándar"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            
+            return self.success_response(
+                data=serializer.data,
+                message="Documento subido actualizado exitosamente",
+                code="available_field_updated",
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al actualizar el documento subido",
+                code="document_uploaded_update_error",
+                http_status=400
+            )
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Actualizar parcialmente documento subido con formato estándar"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            
+            return self.success_response(
+                data=serializer.data,
+                message="Documento subido actualizado exitosamente",
+                code="available_field_partial_updated",
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al actualizar el documento subido",
+                code="document_uploaded_update_error",
+                http_status=400
+            )
+    
+    def destroy(self, request, *args, **kwargs):
+        """Eliminar documento subido con formato estándar"""
+        try:
+            instance = self.get_object()
+            documento_nombre = instance.nombre  # Guardamos el nombre antes de eliminar
+            instance.delete()
+            return self.success_response(
+                data={"deleted_document": documento_nombre},
+                message="Documento subido eliminado exitosamente",
+                code="document_uploaded_deleted",
+                http_status=200
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al eliminar el campo disponible",
+                code="available_field_delete_error",
+                http_status=500
+            )
+
 class CampoDisponibleViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     queryset = CampoDisponible.objects.all()
     serializer_class = CampoDisponibleSerializer
@@ -301,9 +391,13 @@ class CampoDisponibleViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         """Actualizar campo disponible con formato estándar"""
         try:
-            response = super().update(request, *args, **kwargs)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            
             return self.success_response(
-                data=response.data,
+                data=serializer.data,
                 message="Campo disponible actualizado exitosamente",
                 code="available_field_updated",
                 http_status=200
@@ -319,11 +413,15 @@ class CampoDisponibleViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         """Actualizar parcialmente campo disponible con formato estándar"""
         try:
-            response = super().partial_update(request, *args, **kwargs)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            
             return self.success_response(
-                data=response.data,
+                data=serializer.data,
                 message="Campo disponible actualizado exitosamente",
-                code="available_field_updated",
+                code="available_field_partial_updated",
                 http_status=200
             )
         except Exception as e:
@@ -338,12 +436,13 @@ class CampoDisponibleViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         """Eliminar campo disponible con formato estándar"""
         try:
             instance = self.get_object()
+            campo_nombre = instance.nombre  # Guardamos el nombre antes de eliminar
             instance.delete()
             return self.success_response(
-                data=None,
+                data={"deleted_field": campo_nombre},
                 message="Campo disponible eliminado exitosamente",
                 code="available_field_deleted",
-                http_status=204
+                http_status=200
             )
         except Exception as e:
             return self.error_response(
