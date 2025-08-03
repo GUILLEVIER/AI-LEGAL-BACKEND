@@ -1,7 +1,13 @@
-from django.urls import path
-from .views import UsuariosListAPIView, UsuarioDetailAPIView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import UsuariosListAPIView, UsuarioDetailAPIView, GroupViewSet, UserPermissionsAPIView
+
+router = DefaultRouter()
+router.register(r'groups', GroupViewSet, basename='groups')
 
 urlpatterns = [
     path('', UsuariosListAPIView.as_view(), name='usuarios-list'),
     path('<int:usuario_id>/', UsuarioDetailAPIView.as_view(), name='usuario-detail'),
+    path('<int:usuario_id>/permissions/', UserPermissionsAPIView.as_view(), name='usuario-permissions'),
+    path('', include(router.urls)),
 ]
