@@ -3,6 +3,10 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
+from django.templatetags.static import static
+from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
+
 # Carga variables de entorno desde .env
 load_dotenv()
 
@@ -74,6 +78,172 @@ TEMPLATES = [
     },
 ]
 
+UNFOLD = {
+    "SITE_TITLE": "ailegal",
+    "SITE_HEADER": "ai legal",
+    "SITE_SUBHEADER": "AI Legal",
+    "SITE_URL": "/",
+    # "SITE_ICON": lambda request: static("icon.svg"),  # both modes, optimise for 32px height
+    "SITE_ICON": {
+        "light": lambda request: static("ai_legal_sf.png"),  # light mode
+        "dark": lambda request: static("ai_legal_sf.png"),  # dark mode
+    },
+    # "SITE_LOGO": lambda request: static("logo.svg"),  # both modes, optimise for 32px height
+    "SITE_LOGO": {
+        "sizes": "32x32",
+        "light": lambda request: static("ai_legal_sf.png"),  # light mode
+        "dark": lambda request: static("ai_legal_sf.png"),  # dark mode
+    }, # symbol from icon set
+    "SITE_FAVICONS": [
+        {
+            "rel": "icon",
+            "sizes": "32x32",
+            "type": "image/svg+xml",
+            "href": lambda request: static("ai_legal_sf.png"),
+        },
+    ],
+    "SHOW_HISTORY": True, # show/hide "History" button, default: True
+    "SHOW_VIEW_ON_SITE": True, # show/hide "View on site" button, default: True
+    "SHOW_BACK_BUTTON": False, # show/hide "Back" button on changeform in header, default: False
+    "THEME": "dark", # Force theme: "dark" or "light". Will disable theme switcher
+    "BORDER_RADIUS": "6px",
+    "SIDEBAR": {
+        "show_search": False,  # Search in applications and models names
+        "command_search": False,  # Replace the sidebar search with the command search
+        "show_all_applications": False,  # Dropdown with all applications and models
+        "navigation": [
+            {
+                "title": _("Navegar"),
+                "separator": True,  # Top border
+                "collapsible": True,  # Collapsible group of links
+                "items": [
+                    {
+                        "title": _("Dashboard"),
+                        "icon": "dashboard",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:index"),
+                        "badge": "Administrador",
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                ],
+            },
+            {
+                "title": _("Usuarios y Grupos"),
+                "separator": True,  # Top border
+                "collapsible": True,  # Collapsible group of links
+                "items": [
+                    {
+                        "title": _("Usuarios"),
+                        "icon": "person",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:users_usuarios_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Grupos"),
+                        "icon": "group",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:auth_group_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    
+                ],
+            },
+            {
+                "title": _("Compañias"),
+                "separator": True,  # Top border
+                "collapsible": True,  # Collapsible group of links
+                "items": [
+                    {
+                        "title": _("Empresas"),
+                        "icon": "business",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:companies_empresas_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Planes"),
+                        "icon": "payment",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:companies_planes_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Tribunales"),
+                        "icon": "gavel",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:companies_tribunales_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    
+                ],
+            },
+            {
+                "title": _("Documentos"),
+                "separator": True,  # Top border
+                "collapsible": True,  # Collapsible group of links
+                "items": [
+                    {
+                        "title": _("Documento Subido"),
+                        "icon": "upload",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_documentosubido_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Campo Disponible"),
+                        "icon": "table_rows",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_campodisponible_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Tipo PlantillaDocumento"),
+                        "icon": "type_specimen",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_tipoplantilladocumento_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Plantilla Documento"),
+                        "icon": "document_scanner",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_plantilladocumento_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Campo Plantilla"),
+                        "icon": "add_notes",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_campoplantilla_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Documento Generado"),
+                        "icon": "article",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_documentogenerado_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Plantilla Favorita"),
+                        "icon": "star",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_plantillafavorita_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Plantilla Compartida"),
+                        "icon": "handshake",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_plantillacompartida_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Clasificacion Plantilla General"),
+                        "icon": "category",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_clasificacionplantillageneral_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Plantilla General"),
+                        "icon": "add_notes",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_plantillageneral_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    
+                ],
+            },
+        ],
+    },
+}
+
 WSGI_APPLICATION = 'core.wsgi.application'
 
 # Database
@@ -83,14 +253,14 @@ DB_USER = os.getenv('DB_USER', '')
 DB_PASSWORD = os.getenv('DB_PASSWORD', '')
 DB_HOST = os.getenv('DB_HOST', '')
 DB_PORT = os.getenv('DB_PORT', '')
-
+'''
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-"""
+'''
 DATABASES = {
     'default': {
         'ENGINE': DB_ENGINE,
@@ -100,7 +270,7 @@ DATABASES = {
         'HOST': DB_HOST,
         'PORT': DB_PORT,
     }
-}"""
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

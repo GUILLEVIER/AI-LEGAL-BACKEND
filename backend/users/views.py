@@ -8,7 +8,7 @@ from core.utils import success_response, error_response
 from .models import Usuarios
 from .serializers import UsuariosSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer
 
-class UsuariosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
+class UsuariosListAPIView(StandardResponseMixin, generics.ListAPIView):
     queryset = Usuarios.objects.all() # type: ignore
     serializer_class = UsuariosSerializer
 
@@ -159,7 +159,7 @@ class CustomLogoutView(LogoutView):
             )
 
 
-class GroupViewSet(StandardResponseMixin, viewsets.ModelViewSet):
+class GroupViewSet(StandardResponseMixin, generics.ListAPIView):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated]
