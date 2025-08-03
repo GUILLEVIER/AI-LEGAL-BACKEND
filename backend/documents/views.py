@@ -133,9 +133,18 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 texto_extraido = archivo.read().decode('utf-8')
                 print(texto_extraido)
 
+            # Verificar autenticación
+            if not request.user.is_authenticated:
+                return self.error_response(
+                    errors="Usuario no autenticado",
+                    message="Autenticación requerida",
+                    code="authentication_required",
+                    http_status=401
+                )
+            
             # Crear registro en base de datos
             documento = DocumentoSubido.objects.create(
-                usuario=request.user if request.user.is_authenticated else Usuarios.objects.first(),
+                usuario=request.user,
                 nombre_original=archivo.name,
                 tipo=tipo,
                 archivo_url=ruta_completa
@@ -561,7 +570,9 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     serializer_class = PlantillaDocumentoSerializer
 
     def get_queryset(self):
-        user = self.request.user if self.request.user.is_authenticated else Usuarios.objects.first()
+        if not self.request.user.is_authenticated:
+            return PlantillaDocumento.objects.none()
+        user = self.request.user
         # Plantillas propias o compartidas conmigo
         compartidas_ids = PlantillaCompartida.objects.filter(usuario=user).values_list('plantilla_id', flat=True)
         return PlantillaDocumento.objects.filter(
@@ -572,7 +583,14 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         print("list: ", request.user)
         """Listar plantillas con información de favoritos"""
         try:
-            usuario = request.user if request.user.is_authenticated else Usuarios.objects.first()
+            if not request.user.is_authenticated:
+                return self.error_response(
+                    errors="Usuario no autenticado",
+                    message="Autenticación requerida",
+                    code="authentication_required",
+                    http_status=401
+                )
+            usuario = request.user
             plantillas = self.get_queryset()  # Solo las del usuario
             
             # Obtener favoritos del usuario
@@ -621,11 +639,17 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """Crear plantilla de documento"""
         try:
+            if not request.user.is_authenticated:
+                return self.error_response(
+                    errors="Usuario no autenticado",
+                    message="Autenticación requerida",
+                    code="authentication_required",
+                    http_status=401
+                )
+            
             serializer = self.get_serializer(data=request.data)
             if serializer.is_valid():
-                plantilla = serializer.save(
-                    usuario=request.user if request.user.is_authenticated else Usuarios.objects.first()
-                )
+                plantilla = serializer.save(usuario=request.user)
                 return self.standard_create_response(
                     serializer,
                     message="Plantilla de documento creada exitosamente",
@@ -721,13 +745,22 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                         print(f"Tipo no encontrado con ID: {serializer.validated_data['tipo_id']}")
                         pass
 
+                # Verificar autenticación
+                if not request.user.is_authenticated:
+                    return self.error_response(
+                        errors="Usuario no autenticado",
+                        message="Autenticación requerida",
+                        code="authentication_required",
+                        http_status=401
+                    )
+                
                 # Crear plantilla
                 plantilla = PlantillaDocumento.objects.create(
                     nombre=serializer.validated_data['nombre'],
                     descripcion=serializer.validated_data.get('descripcion', ''),
                     html_con_campos=serializer.validated_data.get('html_con_campos', ''),
                     tipo=tipo,
-                    usuario=request.user if request.user.is_authenticated else Usuarios.objects.first()
+                    usuario=request.user
                 )
 
                 # Crear campos asociados
@@ -775,11 +808,19 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     valor = datos.get(campo_plantilla.nombre_variable, '')
                     html_resultante = html_resultante.replace(variable, str(valor))
 
+                # Verificar autenticación
+                if not request.user.is_authenticated:
+                    return self.error_response(
+                        errors="Usuario no autenticado",
+                        message="Autenticación requerida",
+                        code="authentication_required",
+                        http_status=401
+                    )
+                
                 # Crear documento generado
-                user = request.user if request.user.is_authenticated else Usuarios.objects.first()
                 documento = DocumentoGenerado.objects.create(
                     plantilla=plantilla,
-                    usuario=user,
+                    usuario=request.user,
                     datos_rellenados=datos,
                     html_resultante=html_resultante
                 )
@@ -901,13 +942,15 @@ class DocumentoGeneradoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     serializer_class = DocumentoGeneradoSerializer
 
     def get_queryset(self):
-        user = self.request.user if self.request.user.is_authenticated else Usuarios.objects.first()
-        return DocumentoGenerado.objects.filter(usuario=user)
+        if not self.request.user.is_authenticated:
+            return DocumentoGenerado.objects.none()
+        return DocumentoGenerado.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
         """Asignar automáticamente el usuario logueado al crear un documento generado"""
-        user = self.request.user if self.request.user.is_authenticated else Usuarios.objects.first()
-        serializer.save(usuario=user)
+        if not self.request.user.is_authenticated:
+            raise PermissionError("Usuario no autenticado")
+        serializer.save(usuario=self.request.user)
     
     def list(self, request, *args, **kwargs):
         """Listar documentos generados con formato estándar"""
@@ -1005,13 +1048,14 @@ class DocumentoGeneradoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 http_status=500
             )
 
-class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
+class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.GenericViewSet):
     queryset = PlantillaFavorita.objects.none()
     serializer_class = PlantillaFavoritaSerializer
-
+    '''
     def get_queryset(self):
-        user = self.request.user if self.request.user.is_authenticated else Usuarios.objects.first()
-        return PlantillaFavorita.objects.filter(usuario=user)
+        if not self.request.user.is_authenticated:
+            return PlantillaFavorita.objects.none()
+        return PlantillaFavorita.objects.filter(usuario=self.request.user)
     
     def list(self, request, *args, **kwargs):
         """Listar favoritos del usuario con formato estándar"""
@@ -1034,11 +1078,19 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             error_message="Error al crear favorito",
             error_code="favorite_create_error"
         )
-    
+    '''
     @action(detail=False, methods=['post'])
     def agregar_favorito(self, request):
         """Agregar plantilla a favoritos"""
         try:
+            if not request.user.is_authenticated:
+                return self.error_response(
+                    errors="Usuario no autenticado",
+                    message="Autenticación requerida",
+                    code="authentication_required",
+                    http_status=401
+                )
+            
             plantilla_id = request.data.get('plantilla_id')
             if not plantilla_id:
                 return self.error_response(
@@ -1049,7 +1101,7 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 )
             
             plantilla = PlantillaDocumento.objects.get(id=plantilla_id)
-            usuario = request.user if request.user.is_authenticated else Usuarios.objects.first()
+            usuario = request.user
             
             # Verificar si ya existe
             favorito, created = PlantillaFavorita.objects.get_or_create(
@@ -1093,6 +1145,14 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def quitar_favorito(self, request):
         """Quitar plantilla de favoritos"""
         try:
+            if not request.user.is_authenticated:
+                return self.error_response(
+                    errors="Usuario no autenticado",
+                    message="Autenticación requerida",
+                    code="authentication_required",
+                    http_status=401
+                )
+            
             plantilla_id = request.data.get('plantilla_id')
             if not plantilla_id:
                 return self.error_response(
@@ -1102,7 +1162,7 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     http_status=400
                 )
             
-            usuario = request.user if request.user.is_authenticated else Usuarios.objects.first()
+            usuario = request.user
             
             favorito = PlantillaFavorita.objects.get(
                 usuario=usuario,
@@ -1136,7 +1196,15 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def mis_favoritos(self, request):
         """Obtener plantillas favoritas del usuario"""
         try:
-            usuario = request.user if request.user.is_authenticated else Usuarios.objects.first()
+            if not request.user.is_authenticated:
+                return self.error_response(
+                    errors="Usuario no autenticado",
+                    message="Autenticación requerida",
+                    code="authentication_required",
+                    http_status=401
+                )
+            
+            usuario = request.user
             favoritos = PlantillaFavorita.objects.filter(usuario=usuario).select_related('plantilla')
             
             plantillas_favoritas = []
@@ -1172,8 +1240,9 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     serializer_class = PlantillaCompartidaSerializer
 
     def get_queryset(self):
-        print(self.request)
-        user = self.request.user if self.request.user.is_authenticated else Usuarios.objects.first()
+        if not self.request.user.is_authenticated:
+            return PlantillaCompartida.objects.none()
+        user = self.request.user
         return PlantillaCompartida.objects.filter(models.Q(usuario=user) | models.Q(plantilla__usuario=user)).distinct()
 
     def list(self, request, *args, **kwargs):
@@ -1738,6 +1807,9 @@ class PlantillaGeneralCompartidaViewSet(StandardResponseMixin, viewsets.ModelVie
     def get_queryset(self):
         """Filtrar plantillas compartidas según el usuario"""
         user = self.request.user
+        if not user.is_authenticated:
+            return PlantillaGeneralCompartida.objects.none()
+        
         if user.is_staff:
             # Los administradores pueden ver todas las plantillas compartidas
             return PlantillaGeneralCompartida.objects.all().select_related(
@@ -1755,6 +1827,13 @@ class PlantillaGeneralCompartidaViewSet(StandardResponseMixin, viewsets.ModelVie
     def mis_plantillas_compartidas(self, request):
         """Obtener plantillas compartidas con el usuario actual"""
         try:
+            if not request.user.is_authenticated:
+                return self.error_response(
+                    message="Usuario no autenticado",
+                    code="authentication_required",
+                    http_status=401
+                )
+            
             compartidas = self.get_queryset().filter(usuario=request.user)
             serializer = self.get_serializer(compartidas, many=True)
             return self.success_response(
@@ -1772,6 +1851,13 @@ class PlantillaGeneralCompartidaViewSet(StandardResponseMixin, viewsets.ModelVie
     def plantillas_vigentes(self, request):
         """Obtener solo las plantillas compartidas vigentes"""
         try:
+            if not request.user.is_authenticated:
+                return self.error_response(
+                    message="Usuario no autenticado",
+                    code="authentication_required",
+                    http_status=401
+                )
+            
             compartidas = self.get_queryset().filter(usuario=request.user)
             vigentes = [c for c in compartidas if c.esta_vigente()]
             serializer = self.get_serializer(vigentes, many=True)
@@ -2004,14 +2090,14 @@ def is_list_paragraph(paragraph):
 
 class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     """ViewSet para listar usuarios (excluyendo al usuario actual)"""
-    queryset = Usuarios.objects.all()
+    queryset = Usuarios.objects.none()
     serializer_class = UsuariosSerializer
     
     def get_queryset(self):
         """Obtener todos los usuarios excepto el usuario actual"""
         if self.request.user.is_authenticated:
             return Usuarios.objects.exclude(id=self.request.user.id)
-        return Usuarios.objects.all()
+        return Usuarios.objects.none()
     
     def list(self, request, *args, **kwargs):
         """Listar usuarios con formato estándar"""
