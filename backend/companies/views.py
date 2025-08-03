@@ -74,7 +74,11 @@ class EmpresasViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return self.error_response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-class PlanesListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
+class EmpresasListAPIView(StandardResponseMixin, generics.ListAPIView):
+    queryset = Empresas.objects.all() # type: ignore
+    serializer_class = EmpresasSerializer
+
+class PlanesListAPIView(StandardResponseMixin, generics.ListAPIView):
     queryset = Planes.objects.all() # type: ignore
     serializer_class = PlanesSerializer
 

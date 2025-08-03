@@ -24,11 +24,11 @@ router.register(r'plantillas-favoritas', PlantillaFavoritaViewSet)
 router.register(r'plantillas-compartidas', PlantillaCompartidaViewSet)
 router.register(r'clasificacion-plantillas-generales', ClasificacionPlantillaGeneralViewSet)
 router.register(r'plantilla-generales', PlantillaGeneralViewSet)
-router.register(r'usuarios', UsuariosViewSet)
+#router.register(r'usuarios', UsuariosViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('docx_to_html/', ConvertDocxToHtmlView.as_view(), name='docx_to_html'),
-    path('image_to_html/', ConvertImageToHtmlView.as_view(), name='image_to_html'),
-    path('pdf_to_html/', ConvertPdfToHtmlView.as_view(), name='pdf_to_html'),
+    #path('docx_to_html/', ConvertDocxToHtmlView.as_view(), name='docx_to_html'),
+    #path('image_to_html/', ConvertImageToHtmlView.as_view(), name='image_to_html'),
+    #path('pdf_to_html/', ConvertPdfToHtmlView.as_view(), name='pdf_to_html'),
 ]

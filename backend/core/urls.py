@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import re_path, include
+from django.http import HttpResponseRedirect
 
 from rest_framework import permissions
 
@@ -21,11 +22,19 @@ schema_view = get_schema_view(
     permission_classes=(permissions.AllowAny,),
 )
 
-admin.site.site_header = "ialegal Admin"
+admin.site.site_header = "ialegal"
 admin.site.site_title = "ialegal Admin Portal"
 admin.site.index_title = "Bienvenido al portal de ialegal"
 
+def redirect_to_react(request):
+    """Redirige a la aplicación React"""
+    # Cambia esta URL por la de tu aplicación React
+    react_url = "https://ai-legal-frontend.netlify.app/"  # o tu dominio de producción
+    return HttpResponseRedirect(react_url)
+
 urlpatterns = [
+    re_path(r'^$', redirect_to_react, name='home'),
+    #re_path('admin/', admin.site.urls),
     re_path('adminailegal/', admin.site.urls),
     re_path(r'login/?$', CustomLoginView.as_view(), name='rest_login'),
     re_path(r'logout/?$', CustomLogoutView.as_view(), name='rest_logout'),
