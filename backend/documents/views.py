@@ -5,11 +5,13 @@ from PIL import Image
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import models
-from rest_framework import generics, viewsets, status
+from rest_framework import generics, viewsets, status, filters
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.models import User
 
 import docx
 from docx.oxml.table import CT_Tbl
@@ -34,6 +36,7 @@ from .models import (
     PlantillaCompartida,
     ClasificacionPlantillaGeneral,
     PlantillaGeneral,
+    PlantillaGeneralCompartida,
 )
 from .serializers import (
     DocumentoSubidoSerializer,
@@ -47,6 +50,7 @@ from .serializers import (
     PlantillaFavoritaSerializer,
     ClasificacionPlantillaGeneralSerializer,
     PlantillaGeneralSerializer,
+    PlantillaGeneralCompartidaSerializer,
     FileUploadSerializer,
 )
 
@@ -1364,7 +1368,7 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             plantilla_id = request.query_params.get('plantilla_id')
             if not plantilla_id:
                 return self.error_response(
-                    error="plantilla_id es requerido",
+                    message="plantilla_id es requerido",
                     code="missing_plantilla_id"
                 )
             
@@ -1387,7 +1391,7 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             )
         except Exception as e:
             return self.error_response(
-                error=f"Error al obtener usuarios compartidos: {str(e)}",
+                message=f"Error al obtener usuarios compartidos: {str(e)}",
                 code="shared_users_error"
             )
 
@@ -1624,6 +1628,187 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 message=f"Error al eliminar la plantilla general: {str(e)}",
                 code="general_template_deletion_error"
             )
+
+    @action(detail=True, methods=['get'])
+    def plantillas_por_clasificacion(self, request, pk=None):
+        """Obtener plantillas agrupadas por clasificación"""
+        try:
+            plantilla_general = self.get_object()
+            data = plantilla_general.get_plantillas_por_clasificacion()
+            return self.success_response(
+                data=data,
+                message="Plantillas por clasificación obtenidas correctamente",
+                code="templates_by_classification_retrieved"
+            )
+        except Exception as e:
+            return self.error_response(
+                message=f"Error al obtener plantillas por clasificación: {str(e)}",
+                code="templates_by_classification_error"
+            )
+
+    @action(detail=True, methods=['post'])
+    def compartir(self, request, pk=None):
+        """Compartir plantilla general con usuarios específicos"""
+        try:
+            plantilla_general = self.get_object()
+            usuarios_ids = request.data.get('usuarios_ids', [])
+            fecha_vencimiento = request.data.get('fecha_vencimiento')
+            
+            if not usuarios_ids:
+                return self.error_response(
+                    message="Debe especificar al menos un usuario",
+                    code="no_users_specified"
+                )
+            
+            # Crear registros de compartición
+            compartidas_creadas = []
+            for usuario_id in usuarios_ids:
+                try:
+                    usuario = User.objects.get(id=usuario_id)
+                    compartida, created = PlantillaGeneralCompartida.objects.get_or_create(
+                        plantilla_general=plantilla_general,
+                        usuario_asignado=usuario,
+                        defaults={
+                            'usuario_que_comparte': request.user,
+                            'fecha_vencimiento': fecha_vencimiento
+                        }
+                    )
+                    if created:
+                        compartidas_creadas.append(compartida)
+                except Usuario.DoesNotExist:
+                    continue
+            
+            return self.success_response(
+                data={
+                    'compartidas_creadas': len(compartidas_creadas),
+                    'total_usuarios': len(usuarios_ids)
+                },
+                message=f"Plantilla compartida con {len(compartidas_creadas)} usuarios",
+                code="template_shared"
+            )
+        except Exception as e:
+            return self.error_response(
+                message=f"Error al compartir plantilla: {str(e)}",
+                code="template_sharing_error"
+            )
+
+    @action(detail=True, methods=['get'])
+    def usuarios_con_acceso(self, request, pk=None):
+        """Obtener usuarios que tienen acceso a esta plantilla general"""
+        try:
+            plantilla_general = self.get_object()
+            compartidas = PlantillaGeneralCompartida.objects.filter(
+                plantilla_general=plantilla_general
+            ).select_related('usuario', 'asignado_por')
+            
+            usuarios_data = []
+            for compartida in compartidas:
+                usuarios_data.append({
+                    'id': compartida.usuario.id,
+                    'username': compartida.usuario.username,
+                    'email': compartida.usuario.email,
+                    'fecha_asignacion': compartida.fecha_asignacion,
+                    'fecha_expiracion': compartida.fecha_expiracion,
+                    'esta_vigente': compartida.esta_vigente(),
+                    'asignado_por': compartida.asignado_por.username
+                })
+            
+            return self.success_response(
+                data=usuarios_data,
+                message="Usuarios con acceso obtenidos correctamente",
+                code="users_with_access_retrieved"
+            )
+        except Exception as e:
+            return self.error_response(
+                 message=f"Error al obtener usuarios con acceso: {str(e)}",
+                 code="users_with_access_error"
+             )
+
+
+class PlantillaGeneralCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
+    """ViewSet para gestionar plantillas generales compartidas"""
+    queryset = PlantillaGeneralCompartida.objects.all()
+    serializer_class = PlantillaGeneralCompartidaSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['plantilla_general__nombre', 'usuario__username', 'asignado_por__username']
+    ordering_fields = ['fecha_asignacion', 'fecha_expiracion']
+    ordering = ['-fecha_asignacion']
+
+    def get_queryset(self):
+        """Filtrar plantillas compartidas según el usuario"""
+        user = self.request.user
+        if user.is_staff:
+            # Los administradores pueden ver todas las plantillas compartidas
+            return PlantillaGeneralCompartida.objects.all().select_related(
+                'plantilla_general', 'usuario', 'asignado_por'
+            )
+        else:
+            # Los usuarios solo pueden ver las plantillas compartidas con ellos
+            return PlantillaGeneralCompartida.objects.filter(
+                usuario=user
+            ).select_related(
+                'plantilla_general', 'usuario', 'asignado_por'
+            )
+
+    @action(detail=False, methods=['get'])
+    def mis_plantillas_compartidas(self, request):
+        """Obtener plantillas compartidas con el usuario actual"""
+        try:
+            compartidas = self.get_queryset().filter(usuario=request.user)
+            serializer = self.get_serializer(compartidas, many=True)
+            return self.success_response(
+                data=serializer.data,
+                message="Plantillas compartidas obtenidas correctamente",
+                code="shared_templates_retrieved"
+            )
+        except Exception as e:
+            return self.error_response(
+                message=f"Error al obtener plantillas compartidas: {str(e)}",
+                code="shared_templates_error"
+            )
+
+    @action(detail=False, methods=['get'])
+    def plantillas_vigentes(self, request):
+        """Obtener solo las plantillas compartidas vigentes"""
+        try:
+            compartidas = self.get_queryset().filter(usuario=request.user)
+            vigentes = [c for c in compartidas if c.esta_vigente()]
+            serializer = self.get_serializer(vigentes, many=True)
+            return self.success_response(
+                data=serializer.data,
+                message="Plantillas vigentes obtenidas correctamente",
+                code="valid_shared_templates_retrieved"
+            )
+        except Exception as e:
+            return self.error_response(
+                message=f"Error al obtener plantillas vigentes: {str(e)}",
+                code="valid_shared_templates_error"
+            )
+
+    @action(detail=True, methods=['delete'])
+    def revocar_acceso(self, request, pk=None):
+        """Revocar acceso a una plantilla compartida"""
+        try:
+            compartida = self.get_object()
+            # Solo el usuario que asignó o un admin puede revocar el acceso
+            if request.user != compartida.asignado_por and not request.user.is_staff:
+                return self.error_response(
+                    message="No tiene permisos para revocar este acceso",
+                    code="permission_denied"
+                )
+            
+            compartida.delete()
+            return self.success_response(
+                message="Acceso revocado correctamente",
+                code="access_revoked"
+            )
+        except Exception as e:
+            return self.error_response(
+                message=f"Error al revocar acceso: {str(e)}",
+                code="revoke_access_error"
+            )
+
 
 class ConvertDocxToHtmlView(StandardResponseMixin, APIView):
     parser_classes = [MultiPartParser]

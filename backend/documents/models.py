@@ -252,15 +252,24 @@ class PlantillaGeneral(models.Model):
         return self.plantillas_incluidas.count()
     
     def get_plantillas_por_categoria(self):
-        """Retorna las plantillas agrupadas por categoría"""
+        """Retorna las plantillas agrupadas por tipo"""
         from collections import defaultdict
-        plantillas_por_categoria = defaultdict(list)
+        plantillas_por_tipo = defaultdict(list)
         
-        for plantilla in self.plantillas_incluidas.select_related('categoria'):
-            categoria_nombre = plantilla.categoria.nombre if plantilla.categoria else 'Sin categoría'
-            plantillas_por_categoria[categoria_nombre].append(plantilla)
+        for plantilla in self.plantillas_incluidas.select_related('tipo'):
+            tipo_nombre = plantilla.tipo.nombre if plantilla.tipo else 'Sin tipo'
+            plantilla_data = {
+                'id': plantilla.id,
+                'nombre': plantilla.nombre,
+                'descripcion': plantilla.descripcion,
+                'tipo': {
+                    'id': plantilla.tipo.id,
+                    'nombre': plantilla.tipo.nombre
+                } if plantilla.tipo else None
+            }
+            plantillas_por_tipo[tipo_nombre].append(plantilla_data)
             
-        return dict(plantillas_por_categoria)
+        return dict(plantillas_por_tipo)
     
     def get_plantillas_por_clasificacion(self):
         """Retorna información de la clasificación y las plantillas incluidas en este paquete"""
@@ -270,7 +279,7 @@ class PlantillaGeneral(models.Model):
                 'nombre': self.clasificacion.nombre,
                 'descripcion': self.clasificacion.descripcion,
                 'creado_por': self.clasificacion.creado_por.get_full_name() or self.clasificacion.creado_por.username,
-                'fecha_creacion': self.clasificacion.fecha_creacion,
+                'fecha_creacion': self.clasificacion.fecha_creacion.isoformat() if self.clasificacion.fecha_creacion else None,
             },
             'paquete': {
                 'id': self.id,
@@ -280,8 +289,8 @@ class PlantillaGeneral(models.Model):
                 'es_premium': self.es_paquete_premium,
                 'activo': self.activo,
             },
-            'plantillas': list(self.plantillas_incluidas.filter(activo=True).values(
-                'id', 'nombre', 'descripcion', 'categoria__nombre'
+            'plantillas': list(self.plantillas_incluidas.values(
+                'id', 'nombre', 'descripcion', 'tipo__nombre'
             ))
         }
     
@@ -402,4 +411,4 @@ class PlantillaGeneralCompartida(models.Model):
         """Retorna las plantillas disponibles en este paquete"""
         if not self.esta_vigente():
             return PlantillaDocumento.objects.none()
-        return self.plantilla_general.plantillas_incluidas.filter(activo=True)
+        return self.plantilla_general.plantillas_incluidas.all()
