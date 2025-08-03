@@ -11,6 +11,7 @@ from .models import (
     PlantillaCompartida,
     ClasificacionPlantillaGeneral,
     PlantillaGeneral,
+    PlantillaGeneralCompartida,
 )
 
 from unfold.admin import ModelAdmin
@@ -93,36 +94,72 @@ class ClasificacionPlantillaGeneralAdmin(ModelAdmin):
 
 @admin.register(PlantillaGeneral)
 class PlantillaGeneralAdmin(ModelAdmin):
-    list_display = ('id', 'nombre', 'clasificacion', 'total_documentos', 'fecha_creacion')
+    list_display = ('id', 'nombre', 'clasificacion', 'total_plantillas', 'activo', 'es_paquete_premium', 'fecha_creacion')
     search_fields = ('nombre', 'descripcion', 'clasificacion__nombre')
-    list_filter = ('clasificacion', 'fecha_creacion')
-    readonly_fields = ('fecha_creacion',)
+    list_filter = ('clasificacion', 'activo', 'es_paquete_premium', 'fecha_creacion')
+    readonly_fields = ('fecha_creacion', 'fecha_actualizacion')
     ordering = ('-fecha_creacion',)
-    filter_horizontal = ('documentos',)
+    filter_horizontal = ('plantillas_incluidas',)
     
     fieldsets = (
         ('Información General', {
             'fields': ('nombre', 'clasificacion', 'descripcion')
         }),
-        ('Documentos Asociados', {
-            'fields': ('documentos',),
+        ('Configuración del Paquete', {
+            'fields': ('activo', 'es_paquete_premium', 'creado_por_admin')
+        }),
+        ('Plantillas Incluidas', {
+            'fields': ('plantillas_incluidas',),
             'classes': ('collapse',)
         }),
         ('Información del Sistema', {
-            'fields': ('fecha_creacion',),
+            'fields': ('fecha_creacion', 'fecha_actualizacion'),
             'classes': ('collapse',)
         }),
     )
     
-    def total_documentos(self, obj):
-        """Muestra el número total de documentos asociados"""
-        return obj.documentos.count()
-    total_documentos.short_description = 'Total Documentos'
-    total_documentos.admin_order_field = 'documentos_count'
+    def total_plantillas(self, obj):
+        """Muestra el número total de plantillas incluidas en el paquete"""
+        return obj.get_total_plantillas()
+    total_plantillas.short_description = 'Total Plantillas'
+    total_plantillas.admin_order_field = 'plantillas_count'
     
     def get_queryset(self, request):
         """Optimiza las consultas con select_related y prefetch_related"""
         queryset = super().get_queryset(request)
-        queryset = queryset.select_related('clasificacion').prefetch_related('documentos')
+        queryset = queryset.select_related('clasificacion', 'creado_por_admin').prefetch_related('plantillas_incluidas')
+        return queryset
+
+@admin.register(PlantillaGeneralCompartida)
+class PlantillaGeneralCompartidaAdmin(ModelAdmin):
+    list_display = ('plantilla_general', 'usuario', 'asignado_por', 'activo', 'esta_vigente_display', 'fecha_asignacion')
+    search_fields = ('plantilla_general__nombre', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
+    list_filter = ('activo', 'fecha_asignacion', 'fecha_expiracion', 'plantilla_general__clasificacion')
+    readonly_fields = ('fecha_asignacion', 'fecha_ultimo_acceso')
+    ordering = ('-fecha_asignacion',)
+    
+    fieldsets = (
+        ('Asignación', {
+            'fields': ('plantilla_general', 'usuario', 'asignado_por')
+        }),
+        ('Control de Acceso', {
+            'fields': ('activo', 'fecha_expiracion', 'notas')
+        }),
+        ('Información del Sistema', {
+            'fields': ('fecha_asignacion', 'fecha_ultimo_acceso'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def esta_vigente_display(self, obj):
+        """Muestra si la asignación está vigente"""
+        return obj.esta_vigente()
+    esta_vigente_display.short_description = 'Vigente'
+    esta_vigente_display.boolean = True
+    
+    def get_queryset(self, request):
+        """Optimiza las consultas con select_related"""
+        queryset = super().get_queryset(request)
+        queryset = queryset.select_related('plantilla_general', 'usuario', 'asignado_por', 'plantilla_general__clasificacion')
         return queryset
 
