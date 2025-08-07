@@ -8,7 +8,7 @@ from core.utils import success_response, error_response
 from .models import Usuarios
 from .serializers import UsuariosSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer
 
-class UsuariosListAPIView(StandardResponseMixin, generics.ListAPIView):
+class UsuariosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     queryset = Usuarios.objects.all() # type: ignore
     serializer_class = UsuariosSerializer
 

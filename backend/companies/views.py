@@ -14,7 +14,7 @@ class EmpresasViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     serializer_class = EmpresasSerializer
     filter_backends = [SearchFilter, OrderingFilter]
     #^quecomience
-    search_fields = ['^nombre', 'rut', 'fechaCreacion']
+    search_fields = ['^nombre', 'rut', 'fecha_creacion']
     ordering_fields = ['id', 'nombre']
     #http_method_names = ['get', 'head', 'options']
 
