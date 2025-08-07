@@ -54,7 +54,7 @@ class TipoPlantillaDocumento(models.Model):
 
     class Meta:
         managed = True
-        db_table = 'tipos_plantillas'
+        db_table = 'tipos_plantillas_documentos'
         verbose_name_plural = 'Tipos de Plantillas'
     
     def __str__(self):
@@ -93,6 +93,7 @@ class CampoPlantilla(models.Model):
 
 class DocumentoGenerado(models.Model):
     id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=255)
     plantilla = models.ForeignKey(PlantillaDocumento, on_delete=models.CASCADE)
     usuario = models.ForeignKey(Usuarios, on_delete=models.CASCADE)
     datos_rellenados = models.JSONField()
@@ -119,6 +120,9 @@ class PlantillaFavorita(models.Model):
     fecha_agregado = models.DateTimeField(default=timezone.now)
     
     class Meta:
+        managed = True
+        db_table = 'plantillas_favoritas'
+        verbose_name_plural = 'Plantillas Favoritas'
         unique_together = ['usuario', 'plantilla']
     
     def __str__(self):
@@ -131,6 +135,9 @@ class PlantillaCompartida(models.Model):
     fecha_compartida = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        managed = True
+        db_table = 'plantillas_compartidas'
+        verbose_name_plural = 'Plantillas Compartidas'
         unique_together = ('plantilla', 'usuario')
 
     def __str__(self):
@@ -168,7 +175,7 @@ class ClasificacionPlantillaGeneral(models.Model):
 
     class Meta:
         managed = True
-        db_table = 'clasificacion_plantilla_general'
+        db_table = 'clasificaciones_plantillas_generales'
         verbose_name = 'Categoría de Paquetes'
         verbose_name_plural = 'Categorías de Paquetes'
         ordering = ['nombre']
@@ -381,7 +388,7 @@ class PlantillaGeneralCompartida(models.Model):
     )
     
     class Meta:
-        db_table = 'documents_plantillageneralcompartida'
+        db_table = 'plantillas_generales_compartidas'
         unique_together = ['plantilla_general', 'usuario']
         indexes = [
             models.Index(fields=['plantilla_general', 'usuario', 'activo']),

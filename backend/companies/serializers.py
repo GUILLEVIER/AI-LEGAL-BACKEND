@@ -15,7 +15,7 @@ class EmpresasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Empresas
         fields = (
-            'id', 'plan', 'plan_nombre', 'plan_precio', 'rut', 'nombre', 'correo', 'fechaCreacion'
+            'id', 'plan', 'plan_nombre', 'plan_precio', 'rut', 'nombre', 'correo', 'fecha_creacion'
         )
 
 

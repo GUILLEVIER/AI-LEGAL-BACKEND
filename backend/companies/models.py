@@ -4,7 +4,7 @@ from django.db import models
 class Tribunales(models.Model):
     id = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=250, null=False, blank=False)
-    fechaCreacion = models.DateTimeField(auto_now_add=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         managed = True
@@ -25,7 +25,7 @@ class Planes(models.Model):
     cantidadDemandas = models.IntegerField(null=False, blank=False, default=1) # type: ignore
     cantidadContratos = models.IntegerField(null=False, blank=False, default=1) # type: ignore
     cantidadConsultas = models.IntegerField(null=False, blank=False, default=1) # type: ignore
-    fechaCreacion = models.DateTimeField(auto_now_add=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         managed = True
@@ -45,7 +45,7 @@ class Empresas(models.Model):
     rut = models.CharField(max_length=15, null=False, blank=False)
     nombre = models.CharField(max_length=250, null=False, blank=False)
     correo = models.CharField(max_length=250, null=False, blank=False)
-    fechaCreacion = models.DateTimeField(auto_now_add=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         managed = True
