@@ -60,101 +60,177 @@ class UsuarioDetailAPIView(StandardResponseMixin, generics.RetrieveAPIView):
 
 class CustomLoginView(StandardResponseMixin, LoginView):
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        # Si el login fue exitoso (status 200 o 201)
-        if response.status_code in [200, 201]:
-            return self.success_response(
-                data=response.data,
-                message="Login exitoso",
-                code="login_success",
-                http_status=response.status_code
-            )
-        else:
-            # Si hubo error, extrae el mensaje de error
-            error_msg = response.data.get('non_field_errors') or response.data.get('detail') or "Error de login"
+        try:
+            response = super().post(request, *args, **kwargs)
+            # Si el login fue exitoso (status 200 o 201)
+            if response.status_code in [200, 201]:
+                return self.success_response(
+                    data=response.data,
+                    message="Login exitoso",
+                    code="login_success",
+                    http_status=response.status_code
+                )
+            else:
+                # Si hubo error, extrae el mensaje de error de forma segura
+                error_msg = "Credenciales inválidas"
+                if hasattr(response, 'data') and response.data:
+                    if isinstance(response.data, dict):
+                        error_msg = (
+                            response.data.get('non_field_errors') or 
+                            response.data.get('detail') or 
+                            "Credenciales inválidas"
+                        )
+                        # Si es una lista, toma el primer elemento
+                        if isinstance(error_msg, list) and error_msg:
+                            error_msg = error_msg[0]
+                
+                return self.error_response(
+                    errors=error_msg,
+                    message="Credenciales inválidas",
+                    code="login_failed",
+                    http_status=status.HTTP_401_UNAUTHORIZED
+                )
+        except Exception as e:
+            # Manejo de cualquier excepción no prevista
             return self.error_response(
-                errors=error_msg,
+                errors="Credenciales inválidas",
                 message="Credenciales inválidas",
-                code="login_failed",
-                http_status=response.status_code
+                code="login_error",
+                http_status=status.HTTP_401_UNAUTHORIZED
             )
 
 class CustomTokenRefreshView(StandardResponseMixin, TokenRefreshView):
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            return self.success_response(
-                data=response.data,
-                message="Token refrescado exitosamente",
-                code="token_refresh_success",
-                http_status=status.HTTP_200_OK
-            )
-        else:
-            error_msg = response.data.get('detail') or "Error al refrescar el token"
+        try:
+            response = super().post(request, *args, **kwargs)
+            if response.status_code == 200:
+                return self.success_response(
+                    data=response.data,
+                    message="Token refrescado exitosamente",
+                    code="token_refresh_success",
+                    http_status=status.HTTP_200_OK
+                )
+            else:
+                error_msg = "Token inválido o expirado"
+                if hasattr(response, 'data') and response.data and isinstance(response.data, dict):
+                    error_msg = response.data.get('detail') or "Token inválido o expirado"
+                    if isinstance(error_msg, list) and error_msg:
+                        error_msg = error_msg[0]
+                
+                return self.error_response(
+                    errors=error_msg,
+                    message="Token inválido o expirado",
+                    code="token_refresh_failed",
+                    http_status=status.HTTP_401_UNAUTHORIZED
+                )
+        except Exception as e:
             return self.error_response(
-                errors=error_msg,
+                errors="Token inválido o expirado",
                 message="Token inválido o expirado",
-                code="token_refresh_failed",
-                http_status=response.status_code
+                code="token_refresh_error",
+                http_status=status.HTTP_401_UNAUTHORIZED
             )
 
 class CustomTokenVerifyView(StandardResponseMixin, TokenVerifyView):
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            return self.success_response(
-                data=response.data,
-                message="Token verificado exitosamente",
-                code="token_verify_success",
-                http_status=status.HTTP_200_OK
-            )
-        else:
-            error_msg = response.data.get('detail') or "Token inválido"
+        try:
+            response = super().post(request, *args, **kwargs)
+            if response.status_code == 200:
+                return self.success_response(
+                    data=response.data,
+                    message="Token verificado exitosamente",
+                    code="token_verify_success",
+                    http_status=status.HTTP_200_OK
+                )
+            else:
+                error_msg = "Token inválido"
+                if hasattr(response, 'data') and response.data and isinstance(response.data, dict):
+                    error_msg = response.data.get('detail') or "Token inválido"
+                    if isinstance(error_msg, list) and error_msg:
+                        error_msg = error_msg[0]
+                
+                return self.error_response(
+                    errors=error_msg,
+                    message="Token inválido",
+                    code="token_verify_failed",
+                    http_status=status.HTTP_401_UNAUTHORIZED
+                )
+        except Exception as e:
             return self.error_response(
-                errors=error_msg,
+                errors="Token inválido",
                 message="Token inválido",
-                code="token_verify_failed",
-                http_status=response.status_code
+                code="token_verify_error",
+                http_status=status.HTTP_401_UNAUTHORIZED
             )
 
 class CustomPasswordChangeView(StandardResponseMixin, PasswordChangeView):
     serializer_class = CustomPasswordChangeSerializer
     
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code in [200, 201]:
-            return self.success_response(
-                data=response.data,
-                message="Contraseña cambiada exitosamente",
-                code="password_change_success",
-                http_status=response.status_code
-            )
-        else:
-            error_msg = response.data.get('non_field_errors') or response.data.get('detail') or "Error al cambiar la contraseña"
+        try:
+            response = super().post(request, *args, **kwargs)
+            if response.status_code in [200, 201]:
+                return self.success_response(
+                    data=response.data,
+                    message="Contraseña cambiada exitosamente",
+                    code="password_change_success",
+                    http_status=response.status_code
+                )
+            else:
+                error_msg = "No se pudo cambiar la contraseña"
+                if hasattr(response, 'data') and response.data and isinstance(response.data, dict):
+                    error_msg = (
+                        response.data.get('non_field_errors') or 
+                        response.data.get('detail') or 
+                        "No se pudo cambiar la contraseña"
+                    )
+                    if isinstance(error_msg, list) and error_msg:
+                        error_msg = error_msg[0]
+                
+                return self.error_response(
+                    errors=error_msg,
+                    message="No se pudo cambiar la contraseña",
+                    code="password_change_failed",
+                    http_status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as e:
             return self.error_response(
-                errors=error_msg,
+                errors="No se pudo cambiar la contraseña",
                 message="No se pudo cambiar la contraseña",
-                code="password_change_failed",
-                http_status=response.status_code
+                code="password_change_error",
+                http_status=status.HTTP_400_BAD_REQUEST
             )
 
 class CustomLogoutView(StandardResponseMixin, LogoutView):
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code in [200, 201]:
-            return self.success_response(
-                data=response.data,
-                message="Logout exitoso",
-                code="logout_success",
-                http_status=response.status_code
-            )
-        else:
-            error_msg = response.data.get('detail') or "Error al cerrar sesión"
+        try:
+            response = super().post(request, *args, **kwargs)
+            if response.status_code in [200, 201]:
+                return self.success_response(
+                    data=response.data,
+                    message="Logout exitoso",
+                    code="logout_success",
+                    http_status=response.status_code
+                )
+            else:
+                error_msg = "No se pudo cerrar sesión"
+                if hasattr(response, 'data') and response.data and isinstance(response.data, dict):
+                    error_msg = response.data.get('detail') or "No se pudo cerrar sesión"
+                    if isinstance(error_msg, list) and error_msg:
+                        error_msg = error_msg[0]
+                
+                return self.error_response(
+                    errors=error_msg,
+                    message="No se pudo cerrar sesión",
+                    code="logout_failed",
+                    http_status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as e:
             return self.error_response(
-                errors=error_msg,
+                errors="No se pudo cerrar sesión",
                 message="No se pudo cerrar sesión",
-                code="logout_failed",
-                http_status=response.status_code
+                code="logout_error",
+                http_status=status.HTTP_400_BAD_REQUEST
             )
 
 
