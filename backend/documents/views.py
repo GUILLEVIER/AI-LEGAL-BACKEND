@@ -565,6 +565,22 @@ class TipoPlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet
                 http_status=500
             )
 
+class TipoPlantillaDocumentoListAPIView(StandardResponseMixin, generics.ListAPIView):
+    queryset = TipoPlantillaDocumento.objects.all()
+    serializer_class = TipoPlantillaDocumentoSerializer
+
+    def list(self, request, *args, **kwargs):
+        """Listar tipos de plantilla de documento con formato estándar"""
+        return self.paginated_list_response(
+            request=request,
+            queryset=self.get_queryset(),
+            serializer_class=self.serializer_class,
+            paginated_message="Tipos de plantilla de documento obtenidos exitosamente (paginados)",
+            unpaginated_message="Tipos de plantilla de documento obtenidos exitosamente",
+            code="template_types_retrieved",
+            error_code="template_types_error"
+        )
+
 class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     queryset = PlantillaDocumento.objects.none()
     serializer_class = PlantillaDocumentoSerializer
@@ -1579,6 +1595,29 @@ class ClasificacionPlantillaGeneralViewSet(StandardResponseMixin, viewsets.Model
             return self.error_response(
                 message=f"Error al eliminar la clasificación de plantilla general: {str(e)}",
                 code="classification_deletion_error"
+            )
+
+class ClasificacionPlantillaGeneralListAPIView(StandardResponseMixin, generics.ListAPIView):
+    queryset = ClasificacionPlantillaGeneral.objects.all()
+    serializer_class = ClasificacionPlantillaGeneralSerializer
+
+    def list(self, request, *args, **kwargs):
+        """Listar clasificaciones de plantilla general"""
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            return self.paginated_list_response(
+                request,
+                queryset,
+                self.get_serializer_class(),
+                paginated_message="Listado paginado de clasificaciones de plantilla general obtenido correctamente",
+                unpaginated_message="Listado de clasificaciones de plantilla general obtenido correctamente",
+                code="classification_list_retrieved",
+                error_code="classification_list_error"
+            )
+        except Exception as e:
+            return self.error_response(
+                message=f"Error al obtener las clasificaciones de plantilla general: {str(e)}",
+                code="classification_list_error"
             )
 
 class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
