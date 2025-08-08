@@ -85,21 +85,21 @@ UNFOLD = {
     "SITE_URL": "/",
     # "SITE_ICON": lambda request: static("icon.svg"),  # both modes, optimise for 32px height
     "SITE_ICON": {
-        "light": lambda request: static("ai_legal_sf.png"),  # light mode
-        "dark": lambda request: static("ai_legal_sf.png"),  # dark mode
+        "light": lambda request: static("ai-legal-bg.png"),  # light mode
+        "dark": lambda request: static("ai-legal-bg.png"),  # dark mode
     },
     # "SITE_LOGO": lambda request: static("logo.svg"),  # both modes, optimise for 32px height
     "SITE_LOGO": {
         "sizes": "32x32",
-        "light": lambda request: static("ai_legal_sf.png"),  # light mode
-        "dark": lambda request: static("ai_legal_sf.png"),  # dark mode
+        "light": lambda request: static("ai-legal-bg.png"),  # light mode
+        "dark": lambda request: static("ai-legal-bg.png"),  # dark mode
     }, # symbol from icon set
     "SITE_FAVICONS": [
         {
             "rel": "icon",
             "sizes": "32x32",
             "type": "image/svg+xml",
-            "href": lambda request: static("ai_legal_sf.png"),
+            "href": lambda request: static("ai-legal-bg.png"),
         },
     ],
     "SHOW_HISTORY": True, # show/hide "History" button, default: True
@@ -298,6 +298,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'es'
 TIME_ZONE = 'UTC'
 USE_I18N = True
+USE_L10N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
