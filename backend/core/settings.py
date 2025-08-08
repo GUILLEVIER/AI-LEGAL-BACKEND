@@ -311,10 +311,12 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-ACCOUNT_LOGIN_METHODS = {'email'}
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+# Configuración de allauth (usando configuraciones modernas)
+ACCOUNT_LOGIN_METHODS = ['email']  # Nueva configuración recomendada
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']  # Incluye email requerido y sin username
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_LOGOUT_ON_GET = False
+ACCOUNT_EMAIL_VERIFICATION = 'none'  # Opcional: desactivar verificación de email
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
