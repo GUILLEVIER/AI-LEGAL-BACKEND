@@ -1,10 +1,9 @@
-from rest_framework import generics, viewsets
+from rest_framework import generics, viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView
 from django.contrib.auth.models import Group
 from core.mixins import StandardResponseMixin
-from core.utils import success_response, error_response
 from .models import Usuarios
 from .serializers import UsuariosSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer
 
@@ -32,7 +31,7 @@ class UsuariosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
             code="usuario_created",
             error_message="Error al crear el usuario",
             error_code="usuario_create_error",
-            http_status=201,
+            http_status=status.HTTP_201_CREATED,
             **kwargs
         )
 
@@ -49,22 +48,22 @@ class UsuarioDetailAPIView(StandardResponseMixin, generics.RetrieveAPIView):
                 data=serializer.data,
                 message="Detalle de usuario obtenido correctamente",
                 code="usuario_detail",
-                http_status=200
+                http_status=status.HTTP_200_OK
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al obtener el detalle del usuario",
                 code="usuario_detail_error",
-                http_status=404
+                http_status=status.HTTP_404_NOT_FOUND
             )
 
-class CustomLoginView(LoginView):
+class CustomLoginView(StandardResponseMixin, LoginView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         # Si el login fue exitoso (status 200 o 201)
         if response.status_code in [200, 201]:
-            return success_response(
+            return self.success_response(
                 data=response.data,
                 message="Login exitoso",
                 code="login_success",
@@ -73,58 +72,58 @@ class CustomLoginView(LoginView):
         else:
             # Si hubo error, extrae el mensaje de error
             error_msg = response.data.get('non_field_errors') or response.data.get('detail') or "Error de login"
-            return error_response(
+            return self.error_response(
                 errors=error_msg,
                 message="Credenciales inválidas",
                 code="login_failed",
                 http_status=response.status_code
             )
 
-class CustomTokenRefreshView(TokenRefreshView):
+class CustomTokenRefreshView(StandardResponseMixin, TokenRefreshView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
-            return success_response(
+            return self.success_response(
                 data=response.data,
                 message="Token refrescado exitosamente",
                 code="token_refresh_success",
-                http_status=200
+                http_status=status.HTTP_200_OK
             )
         else:
             error_msg = response.data.get('detail') or "Error al refrescar el token"
-            return error_response(
+            return self.error_response(
                 errors=error_msg,
                 message="Token inválido o expirado",
                 code="token_refresh_failed",
                 http_status=response.status_code
             )
 
-class CustomTokenVerifyView(TokenVerifyView):
+class CustomTokenVerifyView(StandardResponseMixin, TokenVerifyView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
-            return success_response(
+            return self.success_response(
                 data=response.data,
                 message="Token verificado exitosamente",
                 code="token_verify_success",
-                http_status=200
+                http_status=status.HTTP_200_OK
             )
         else:
             error_msg = response.data.get('detail') or "Token inválido"
-            return error_response(
+            return self.error_response(
                 errors=error_msg,
                 message="Token inválido",
                 code="token_verify_failed",
                 http_status=response.status_code
             )
 
-class CustomPasswordChangeView(PasswordChangeView):
+class CustomPasswordChangeView(StandardResponseMixin, PasswordChangeView):
     serializer_class = CustomPasswordChangeSerializer
     
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code in [200, 201]:
-            return success_response(
+            return self.success_response(
                 data=response.data,
                 message="Contraseña cambiada exitosamente",
                 code="password_change_success",
@@ -132,18 +131,18 @@ class CustomPasswordChangeView(PasswordChangeView):
             )
         else:
             error_msg = response.data.get('non_field_errors') or response.data.get('detail') or "Error al cambiar la contraseña"
-            return error_response(
+            return self.error_response(
                 errors=error_msg,
                 message="No se pudo cambiar la contraseña",
                 code="password_change_failed",
                 http_status=response.status_code
             )
 
-class CustomLogoutView(LogoutView):
+class CustomLogoutView(StandardResponseMixin, LogoutView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code in [200, 201]:
-            return success_response(
+            return self.success_response(
                 data=response.data,
                 message="Logout exitoso",
                 code="logout_success",
@@ -151,7 +150,7 @@ class CustomLogoutView(LogoutView):
             )
         else:
             error_msg = response.data.get('detail') or "Error al cerrar sesión"
-            return error_response(
+            return self.error_response(
                 errors=error_msg,
                 message="No se pudo cerrar sesión",
                 code="logout_failed",
@@ -172,14 +171,14 @@ class GroupViewSet(StandardResponseMixin, generics.ListAPIView):
                 data=serializer.data,
                 message="Listado de grupos obtenido correctamente",
                 code="groups_list",
-                http_status=200
+                http_status=status.HTTP_200_OK
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al obtener el listado de grupos",
                 code="groups_list_error",
-                http_status=500
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     def create(self, request, *args, **kwargs):
@@ -320,12 +319,12 @@ class UserPermissionsAPIView(StandardResponseMixin, generics.RetrieveAPIView):
                 data=response_data,
                 message=f"Permisos del usuario '{instance.username}' obtenidos correctamente",
                 code="user_permissions_detail",
-                http_status=200
+                http_status=status.HTTP_200_OK
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al obtener los permisos del usuario",
                 code="user_permissions_error",
-                http_status=404
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

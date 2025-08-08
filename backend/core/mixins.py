@@ -1,21 +1,42 @@
-from core.utils import success_response, error_response
+from rest_framework.response import Response
+from rest_framework import status
 
 class StandardResponseMixin:
     """
     Mixin para estandarizar respuestas de éxito y error en views DRF.
     """
-    def success_response(self, data=None, message="Operación exitosa", code="success", http_status=200, errors=None):
-        return success_response(data=data, message=message, code=code, http_status=http_status, errors=errors)
+    def success_response(self, data=None, message="Operación exitosa", code="success", http_status=status.HTTP_200_OK, errors=None):
+        """
+        Devuelve una respuesta estándar para éxitos.
+        """
+        return Response({
+            "data": data,
+            "message": message,
+            "status": "success",
+            "code": code,
+            "http_status": http_status,
+            "errors": errors
+        }, status=http_status)
 
-    def error_response(self, errors=None, message="Ocurrió un error", code="error", http_status=400, data=None):
-        simple_error = self.extract_first_error_message(errors)
-        return error_response(
-            errors=simple_error,
-            message=message,
-            code=code,
-            http_status=http_status,
-            data=data
-        )
+    def error_response(self, errors=None, message="Ocurrió un error", code="error", http_status=status.HTTP_400_BAD_REQUEST, data=None):
+        """
+        Devuelve una respuesta estándar para errores.
+        """
+        # Procesa y simplifica los errores
+        processed_errors = self.extract_first_error_message(errors)
+        
+        # Acepta errors como string o lista
+        if isinstance(processed_errors, str):
+            processed_errors = [processed_errors]
+            
+        return Response({
+            "data": data,
+            "message": message,
+            "status": "error",
+            "code": code,
+            "http_status": http_status,
+            "errors": processed_errors
+        }, status=http_status)
 
     def extract_first_error_message(self, errors):
         # Si es un dict, busca el primer mensaje
@@ -39,7 +60,7 @@ class StandardResponseMixin:
             errors="Esta tratando de realizar una operación no Autorizada, contacte al adminitrador.",
             message="Ocurrió un error inesperado",
             code="unexpected_error",
-            http_status=500
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
     def paginated_list_response(self, request, queryset, serializer_class, paginated_message, unpaginated_message, code, error_code):
@@ -52,24 +73,24 @@ class StandardResponseMixin:
                     data=paginated,
                     message=paginated_message,
                     code=code,
-                    http_status=200
+                    http_status=status.HTTP_200_OK
                 )
             serializer = serializer_class(queryset, many=True)
             return self.success_response(
                 data=serializer.data,
                 message=unpaginated_message,
                 code=code,
-                http_status=200
+                http_status=status.HTTP_200_OK
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al obtener el listado",
                 code=error_code,
-                http_status=500
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def standard_create_response(self, request, *args, success_message="Creado exitosamente", code="created", error_message="Error al crear", error_code="create_error", http_status=201, **kwargs):
+    def standard_create_response(self, request, *args, success_message="Creado exitosamente", code="created", error_message="Error al crear", error_code="create_error", http_status=status.HTTP_201_CREATED, **kwargs):
         try:
             response = super().create(request, *args, **kwargs)
             return self.success_response(
@@ -83,5 +104,5 @@ class StandardResponseMixin:
                 errors=str(e),
                 message=error_message,
                 code=error_code,
-                http_status=400
+                http_status=status.HTTP_400_BAD_REQUEST
             )
