@@ -78,6 +78,18 @@ class EmpresasListAPIView(StandardResponseMixin, generics.ListAPIView):
     queryset = Empresas.objects.all() # type: ignore
     serializer_class = EmpresasSerializer
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de empresas",
+            unpaginated_message="Listado de empresas obtenido correctamente",
+            code="empresas_list",
+            error_code="empresas_list_error"
+        )
+
 class PlanesListAPIView(StandardResponseMixin, generics.ListAPIView):
     queryset = Planes.objects.all() # type: ignore
     serializer_class = PlanesSerializer
