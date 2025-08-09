@@ -56,12 +56,20 @@ class StandardResponseMixin:
         """
         Sobrescribe el manejo de excepciones para devolver error_response.
         """
+        # Extraer solo el mensaje de error limpio
+        error_message = getattr(exc, 'detail', str(exc))
+        
+        # Si el error tiene detail, procesarlo para obtener solo el string
+        if hasattr(exc, 'detail'):
+            error_message = self.extract_first_error_message(exc.detail)
+        
         return self.error_response(
-            errors="Esta tratando de realizar una operación no Autorizada, contacte al adminitrador.",
+            errors=error_message,
             message="Ocurrió un error inesperado",
             code="unexpected_error",
             http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
 
     def paginated_list_response(self, request, queryset, serializer_class, paginated_message, unpaginated_message, code, error_code):
         try:

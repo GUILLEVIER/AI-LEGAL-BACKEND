@@ -17,6 +17,33 @@ class UsuariosSerializer(serializers.ModelSerializer):
         read_only_fields = ["empresa"]
 
 
+class UsuariosCreateSerializer(serializers.ModelSerializer):
+    """Serializer específico para la creación de usuarios que permite escribir empresa"""
+    
+    class Meta:
+        model = Usuarios
+        fields = (
+            "id", "username", "email", "first_name", "last_name", "empresa", "password"
+        )
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+    
+    def create(self, validated_data):
+        # Extraer la contraseña para manejarla por separado
+        password = validated_data.pop('password', None)
+        
+        # Crear el usuario
+        usuario = Usuarios.objects.create(**validated_data)
+        
+        # Establecer la contraseña si se proporcionó
+        if password:
+            usuario.set_password(password)
+            usuario.save()
+        
+        return usuario
+
+
 class CustomPasswordChangeSerializer(PasswordChangeSerializer):
     old_password = serializers.CharField(max_length=128)
     new_password = serializers.CharField(max_length=128)

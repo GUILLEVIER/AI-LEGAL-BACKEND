@@ -1,15 +1,73 @@
 from rest_framework import generics, viewsets, status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView
 from django.contrib.auth.models import Group
+from django.core.exceptions import PermissionDenied
 from core.mixins import StandardResponseMixin
 from .models import Usuarios
-from .serializers import UsuariosSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer
+from .serializers import UsuariosSerializer, UsuariosCreateSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer
 
-class UsuariosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
-    queryset = Usuarios.objects.all() # type: ignore
+class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
+    queryset = Usuarios.objects.all()
     serializer_class = UsuariosSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'pk'
+
+    def get_serializer_class(self):
+        """Usar diferentes serializers según la acción"""
+        if self.action in ['create', 'update', 'partial_update']:
+            return UsuariosCreateSerializer
+        return UsuariosSerializer
+
+    def get_queryset(self):
+        """
+        Filtra los usuarios según el tipo de usuario:
+        - Admin/Superuser: Ve todos los usuarios (excepto él mismo)
+        - Usuario regular: Ve solo usuarios de su misma empresa (excepto él mismo)
+        """
+        user = self.request.user
+        
+        # Si es admin o superuser, mostrar todos los usuarios excepto él mismo
+        if user.is_staff or user.is_superuser:
+            return Usuarios.objects.exclude(id=user.id)
+        
+        # Si es usuario regular, filtrar por empresa y excluir al usuario actual
+        if hasattr(user, 'empresa') and user.empresa:
+            return Usuarios.objects.filter(empresa=user.empresa).exclude(id=user.id)
+        else:
+            # Si el usuario no tiene empresa asignada, no mostrar ningún usuario
+            return Usuarios.objects.none()
+
+    def get_object(self):
+        """Verificar permisos antes de obtener el objeto"""
+        obj = super().get_object()
+        user = self.request.user
+        
+        # Para eliminación, prevenir auto-eliminación
+        if self.action == 'destroy' and obj.id == user.id:
+            raise PermissionDenied("No puedes eliminar tu propia cuenta")
+        
+        # Si es admin o superuser, puede hacer cualquier operación
+        if user.is_staff or user.is_superuser:
+            return obj
+        
+        # Si es usuario regular, solo puede operar con usuarios de su misma empresa
+        if hasattr(user, 'empresa') and user.empresa:
+            if obj.empresa == user.empresa:
+                return obj
+        
+        # Si no tiene permisos, lanzar excepción
+        action_messages = {
+            'retrieve': 'ver',
+            'update': 'editar',
+            'partial_update': 'editar',
+            'destroy': 'eliminar'
+        }
+        action_name = action_messages.get(self.action, 'acceder a')
+        raise PermissionDenied(f"No tienes permisos para {action_name} este usuario")
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -24,21 +82,41 @@ class UsuariosListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
         )
 
     def create(self, request, *args, **kwargs):
-        return self.standard_create_response(
-            request,
-            *args,
-            success_message="Usuario creado exitosamente",
-            code="usuario_created",
-            error_message="Error al crear el usuario",
-            error_code="usuario_create_error",
-            http_status=status.HTTP_201_CREATED,
-            **kwargs
-        )
-
-class UsuarioDetailAPIView(StandardResponseMixin, generics.RetrieveAPIView):
-    queryset = Usuarios.objects.all() # type: ignore
-    serializer_class = UsuariosSerializer
-    lookup_url_kwarg = 'usuario_id'
+        try:
+            # Copiar los datos de la solicitud
+            data = request.data.copy()
+            user = request.user
+            
+            # Lógica de asignación de empresa
+            if user.is_staff or user.is_superuser:
+                # Si es admin, puede seleccionar la empresa (mantener el valor enviado)
+                pass
+            else:
+                # Si es usuario regular, asignar automáticamente su empresa
+                if hasattr(user, 'empresa') and user.empresa:
+                    data['empresa'] = user.empresa.id
+                else:
+                    # Si el usuario no tiene empresa, no puede crear usuarios
+                    return self.error_response(
+                        errors="No tienes permisos para crear usuarios",
+                        message="Usuario sin empresa no puede crear otros usuarios",
+                        code="usuario_create_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            usuario = serializer.save()
+            
+            return self.success_response(
+                data=serializer.data,
+                message="Usuario creado exitosamente",
+                code="usuario_created",
+                http_status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            return self.handle_exception(e)
 
     def retrieve(self, request, *args, **kwargs):
         try:
@@ -51,12 +129,234 @@ class UsuarioDetailAPIView(StandardResponseMixin, generics.RetrieveAPIView):
                 http_status=status.HTTP_200_OK
             )
         except Exception as e:
+            return self.handle_exception(e)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            
+            # Copiar los datos de la solicitud
+            data = request.data.copy()
+            user = request.user
+            
+            # Lógica de asignación de empresa para actualización
+            if not (user.is_staff or user.is_superuser):
+                # Si es usuario regular, no puede cambiar la empresa
+                if 'empresa' in data:
+                    data.pop('empresa')
+            
+            # Validar que no se esté intentando cambiar campos sensibles sin permisos
+            sensitive_fields = ['is_staff', 'is_superuser', 'groups', 'user_permissions']
+            if not (user.is_staff or user.is_superuser):
+                for field in sensitive_fields:
+                    if field in data:
+                        data.pop(field)
+            
+            serializer = self.get_serializer(instance, data=data, partial=kwargs.get('partial', False))
+            serializer.is_valid(raise_exception=True)
+            usuario = serializer.save()
+            
+            return self.success_response(
+                data=serializer.data,
+                message="Usuario actualizado exitosamente",
+                code="usuario_updated",
+                http_status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            return self.handle_exception(e)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            usuario_info = {
+                'id': instance.id,
+                'username': instance.username,
+                'email': instance.email,
+                'full_name': f"{instance.first_name} {instance.last_name}".strip()
+            }
+            
+            instance.delete()
+            
+            return self.success_response(
+                data=usuario_info,
+                message=f"Usuario '{usuario_info['username']}' eliminado exitosamente",
+                code="usuario_deleted",
+                http_status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            return self.handle_exception(e)
+
+    @action(detail=True, methods=['get'], url_path='permissions')
+    def permissions(self, request, pk=None):
+        """Acción personalizada para obtener permisos de un usuario"""
+        try:
+            instance = self.get_object()
+            serializer = UserPermissionsSerializer(instance)
+            
+            # Información adicional sobre el resumen de permisos
+            total_groups = instance.groups.count()
+            total_direct_permissions = instance.user_permissions.count()
+            total_all_permissions = len(serializer.data['all_permissions'])
+            
+            response_data = {
+                'user_info': {
+                    'id': instance.id,
+                    'username': instance.username,
+                    'email': instance.email,
+                    'full_name': f"{instance.first_name} {instance.last_name}".strip(),
+                    'empresa': serializer.data['empresa']
+                },
+                'permissions_summary': {
+                    'total_groups': total_groups,
+                    'total_direct_permissions': total_direct_permissions,
+                    'total_all_permissions': total_all_permissions,
+                    'is_superuser': instance.is_superuser,
+                    'is_staff': instance.is_staff
+                },
+                'groups': serializer.data['groups'],
+                'direct_permissions': serializer.data['user_permissions'],
+                'all_permissions': serializer.data['all_permissions']
+            }
+            
+            return self.success_response(
+                data=response_data,
+                message=f"Permisos del usuario '{instance.username}' obtenidos correctamente",
+                code="user_permissions_detail",
+                http_status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return self.handle_exception(e)
+
+    @action(detail=False, methods=['get'], url_path='me')
+    def me(self, request):
+        """Endpoint para obtener información completa del usuario actual"""
+        try:
+            user = request.user
+            
+            # Información de la empresa
+            empresa_info = None
+            if hasattr(user, 'empresa') and user.empresa:
+                empresa_info = {
+                    'id': user.empresa.id,
+                    'nombre': user.empresa.nombre,
+                    'rut': user.empresa.rut,
+                    'correo': user.empresa.correo,
+                    'fecha_creacion': user.empresa.fecha_creacion,
+                    'plan': {
+                        'id': user.empresa.plan.id,
+                        'tipo_plan': user.empresa.plan.tipo_plan,
+                        'nombre': user.empresa.plan.nombre,
+                        'precio': user.empresa.plan.precio,
+                        'cantidad_users': user.empresa.plan.cantidad_users,
+                        'cantidad_escritos': user.empresa.plan.cantidad_escritos,
+                        'cantidad_demandas': user.empresa.plan.cantidad_demandas,
+                        'cantidad_contratos': user.empresa.plan.cantidad_contratos,
+                        'cantidad_consultas': user.empresa.plan.cantidad_consultas,
+                        'fecha_creacion': user.empresa.plan.fecha_creacion
+                    } if user.empresa.plan else None
+                }
+            
+            # Información de grupos
+            groups_info = []
+            for group in user.groups.all():
+                groups_info.append({
+                    'id': group.id,
+                    'name': group.name,
+                    'permissions_count': group.permissions.count()
+                })
+            
+            # Información de permisos directos
+            direct_permissions = []
+            for perm in user.user_permissions.all():
+                direct_permissions.append({
+                    'id': perm.id,
+                    'name': perm.name,
+                    'codename': perm.codename,
+                    'content_type': {
+                        'app_label': perm.content_type.app_label,
+                        'model': perm.content_type.model
+                    }
+                })
+            
+            # Todos los permisos (grupos + directos)
+            all_permissions = list(user.get_all_permissions())
+            
+            # Estadísticas de permisos
+            permissions_stats = {
+                'total_groups': user.groups.count(),
+                'total_direct_permissions': user.user_permissions.count(),
+                'total_all_permissions': len(all_permissions),
+                'is_superuser': user.is_superuser,
+                'is_staff': user.is_staff,
+                'is_active': user.is_active
+            }
+            
+            # Información general del usuario
+            user_info = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'full_name': f"{user.first_name} {user.last_name}".strip(),
+                'date_joined': user.date_joined,
+                'last_login': user.last_login,
+                'is_superuser': user.is_superuser,
+                'is_staff': user.is_staff,
+                'is_active': user.is_active
+            }
+            
+            # Respuesta completa
+            response_data = {
+                'user_info': user_info,
+                'empresa': empresa_info,
+                'groups': groups_info,
+                'permissions': {
+                    'direct_permissions': direct_permissions,
+                    'all_permissions': all_permissions,
+                    'stats': permissions_stats
+                },
+                'profile_completion': {
+                    'has_first_name': bool(user.first_name),
+                    'has_last_name': bool(user.last_name),
+                    'has_email': bool(user.email),
+                    'has_empresa': bool(hasattr(user, 'empresa') and user.empresa),
+                    'completion_percentage': self._calculate_profile_completion(user)
+                }
+            }
+            
+            return self.success_response(
+                data=response_data,
+                message="Información del usuario actual obtenida correctamente",
+                code="current_user_info",
+                http_status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
             return self.error_response(
                 errors=str(e),
-                message="Error al obtener el detalle del usuario",
-                code="usuario_detail_error",
-                http_status=status.HTTP_404_NOT_FOUND
+                message="Error al obtener la información del usuario actual",
+                code="current_user_info_error",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    def _calculate_profile_completion(self, user):
+        """Calcula el porcentaje de completitud del perfil"""
+        fields_to_check = [
+            bool(user.first_name),
+            bool(user.last_name),
+            bool(user.email),
+            bool(hasattr(user, 'empresa') and user.empresa)
+        ]
+        completed_fields = sum(fields_to_check)
+        total_fields = len(fields_to_check)
+        return round((completed_fields / total_fields) * 100, 2)
 
 class CustomLoginView(StandardResponseMixin, LoginView):
     def post(self, request, *args, **kwargs):
@@ -234,7 +534,7 @@ class CustomLogoutView(StandardResponseMixin, LogoutView):
             )
 
 
-class GroupViewSet(StandardResponseMixin, generics.ListAPIView):
+class GroupAPIView(StandardResponseMixin, generics.ListAPIView):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated]
@@ -255,102 +555,6 @@ class GroupViewSet(StandardResponseMixin, generics.ListAPIView):
                 message="Error al obtener el listado de grupos",
                 code="groups_list_error",
                 http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    def create(self, request, *args, **kwargs):
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return self.success_response(
-                data=serializer.data,
-                message="Grupo creado exitosamente",
-                code="group_created",
-                http_status=201
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al crear el grupo",
-                code="group_create_error",
-                http_status=400
-            )
-
-    def retrieve(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance)
-            return self.success_response(
-                data=serializer.data,
-                message="Detalle de grupo obtenido correctamente",
-                code="group_detail",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al obtener el detalle del grupo",
-                code="group_detail_error",
-                http_status=404
-            )
-
-    def update(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return self.success_response(
-                data=serializer.data,
-                message="Grupo actualizado exitosamente",
-                code="group_updated",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al actualizar el grupo",
-                code="group_update_error",
-                http_status=400
-            )
-
-    def partial_update(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return self.success_response(
-                data=serializer.data,
-                message="Grupo actualizado parcialmente exitosamente",
-                code="group_partial_updated",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al actualizar parcialmente el grupo",
-                code="group_partial_update_error",
-                http_status=400
-            )
-
-    def destroy(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            group_name = instance.name
-            instance.delete()
-            return self.success_response(
-                data={"deleted_group": group_name},
-                message=f"Grupo '{group_name}' eliminado exitosamente",
-                code="group_deleted",
-                http_status=200
-            )
-        except Exception as e:
-            return self.error_response(
-                errors=str(e),
-                message="Error al eliminar el grupo",
-                code="group_delete_error",
-                http_status=400
             )
 
 
