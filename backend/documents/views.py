@@ -112,9 +112,18 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 tipo = 'word'
             else:
                 tipo = 'texto'
+            
+            if request.user.is_staff or request.user.is_superuser:
+                # Administradores y staff guardan en carpeta admin
+                ruta_archivo = f'documentos/admin/{request.user.username}/{archivo.name}'
+            else:
+                # Usuarios regulares guardan en carpeta empresa/usuario
+                if hasattr(request.user, 'empresa') and request.user.empresa:
+                    ruta_archivo = f'documentos/{request.user.empresa.id}/{request.user.username}/{archivo.name}'
+                else:
+                    # Fallback si el usuario no tiene empresa asignada
+                    ruta_archivo = f'documentos/sin_empresa/{request.user.username}/{archivo.name}'
 
-            # Guardar archivo
-            ruta_archivo = f'documentos/{archivo.name}'
             ruta_completa = default_storage.save(ruta_archivo, ContentFile(archivo.read()))
 
             # Extraer texto según el tipo
@@ -178,12 +187,13 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def _extraer_texto_pdf(self, archivo):
         """Extraer texto de PDF usando pdfplumber"""
         try:
-            #pdf_bytes = archivo.read()
-            #pdf_buffer = io.BytesIO(pdf_bytes)
             pdf = pdfplumber.open(archivo)
-            result = ""
+            html = ""
+            
             for page in pdf.pages:
                 words = page.extract_words()
+                page_width = page.width
+                
                 # Agrupa palabras por línea (top)
                 lines = {}
                 for word in words:
@@ -191,38 +201,248 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     if line_key not in lines:
                         lines[line_key] = []
                     lines[line_key].append(word)
+                
+                # Procesar cada línea
                 for line_words in lines.values():
+                    if not line_words:
+                        continue
+                        
                     line_words.sort(key=lambda w: w['x0'])
+                    
+                    # Calcular posiciones para detectar centrado
+                    first_word = line_words[0]
+                    last_word = line_words[-1]
+                    line_start = first_word['x0']
+                    line_end = last_word['x1']
+                    line_width = line_end - line_start
+                    
+                    # Detectar si es centrado: debe tener espacio significativo tanto al inicio como al final
+                    margin_left = line_start
+                    margin_right = page_width - line_end
+                    min_margin = page_width * 0.15  # Al menos 15% de margen en cada lado
+                    
+                    # Una línea está centrada si:
+                    # 1. Tiene márgenes significativos en ambos lados
+                    # 2. Los márgenes son relativamente similares (diferencia < 20% del ancho de página)
+                    # 3. No ocupa más del 70% del ancho de la página
+                    is_centered = (
+                        margin_left > min_margin and 
+                        margin_right > min_margin and
+                        abs(margin_left - margin_right) < (page_width * 0.2) and
+                        line_width < (page_width * 0.7)
+                    )
+                    
+                    # Calcular indentación para líneas no centradas
+                    indent_level = 0
+                    if not is_centered and margin_left > 20:
+                        indent_level = max(0, int(margin_left / 25))
+                    
+                    # Construir el texto de la línea
+                    line_text = ""
                     prev_x1 = None
-                    line = ""
+                    
                     for idx, word in enumerate(line_words):
                         if idx == 0:
                             # Primera palabra de la línea
-                            n_dollars = int(word['x0'] // 5)  # Ajusta el divisor según el resultado visual
-                            line += "&nbsp;" * n_dollars
+                            line_text += word['text']
                         else:
                             gap = word['x0'] - prev_x1
-                            if gap > 5:
-                                n_spaces = int(gap // 3)
-                                line += " " * max(1, n_spaces)
-                            else:
-                                line += " "
-                        line += word['text']
+                            
+                            if gap > 40:  # Espacio muy grande - posible tabulación
+                                spaces = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"  # 5 espacios no separables
+                            elif gap > 20:  # Espacio grande
+                                spaces = "&nbsp;&nbsp;"  # 2 espacios no separables
+                            else:  # Espacio normal
+                                spaces = " "
+                            
+                            line_text += spaces + word['text']
+                        
                         prev_x1 = word['x1']
-                    result += line + "\n" + "<br>"
-                    print(result)
-            return result
+                    
+                    # Aplicar estilos según el tipo de línea
+                    if is_centered:
+                        # Línea centrada - probablemente un título
+                        html += f"<p style='text-align: center; font-weight: bold; margin: 12px 0; font-size: 14px;'>{line_text.strip()}</p>\n"
+                    else:
+                        # Línea normal - aplicar justificación y sangría
+                        indent_style = f"margin-left: {indent_level * 15}px; " if indent_level > 0 else ""
+                        
+                        # Detectar si es una línea larga que debería justificarse
+                        # (más del 60% del ancho disponible y más de 6 palabras)
+                        should_justify = (
+                            line_width > (page_width * 0.6) and 
+                            len(line_words) > 6 and 
+                            not line_text.strip().endswith(':')  # No justificar líneas que terminan en :
+                        )
+                        
+                        text_align = "text-align: justify; " if should_justify else "text-align: left; "
+                        
+                        html += f"<p style='{indent_style}{text_align}margin: 6px 0; line-height: 1.4;'>{line_text.strip()}</p>\n"
+            
+            pdf.close()
+            
+            # Envolver todo en un contenedor
+            final_html = f"""
+            <div style='font-family: "Times New Roman", serif; line-height: 1.5; max-width: 800px; margin: 0 auto; padding: 20px; font-size: 13px;'>
+                {html}
+            </div>
+            """
+            
+            return final_html.strip()
+            
         except Exception as e:
             return f"Error al extraer texto del PDF: {str(e)}"
 
     def _extraer_texto_imagen(self, archivo):
-        """Extraer texto de imagen usando OCR"""
+        """Extraer texto de imagen usando OCR manteniendo formato visual"""
         try:
-            imagen = Image.open(archivo)
-            texto = pytesseract.image_to_string(imagen, lang='spa')
-            return texto
+            img = Image.open(archivo)
+            
+            # Lista de idiomas a probar en orden de preferencia
+            idiomas = ['eng', 'spa', 'spa+eng']
+            
+            for idioma in idiomas:
+                try:
+                    # Usar pytesseract para obtener datos de cada palabra con posiciones
+                    ocr_data = pytesseract.image_to_data(img, lang=idioma, output_type=pytesseract.Output.DICT)
+                    break
+                except pytesseract.TesseractError:
+                    continue
+            else:
+                # Si ningún idioma funcionó, usar configuración por defecto
+                ocr_data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+            
+            n = len(ocr_data['level'])
+            paragraphs = {}
+            
+            # Agrupar palabras por párrafos y líneas
+            for i in range(n):
+                if int(ocr_data['conf'][i]) > 0 and ocr_data['text'][i].strip():
+                    block_num = ocr_data['block_num'][i]
+                    par_num = ocr_data['par_num'][i]
+                    line_num = ocr_data['line_num'][i]
+                    
+                    # Usar block_num y par_num para agrupar párrafos
+                    par_key = (block_num, par_num)
+                    line_key = (block_num, par_num, line_num)
+                    
+                    if par_key not in paragraphs:
+                        paragraphs[par_key] = {}
+                    
+                    if line_key not in paragraphs[par_key]:
+                        paragraphs[par_key][line_key] = []
+                    
+                    paragraphs[par_key][line_key].append({
+                        'text': ocr_data['text'][i],
+                        'left': ocr_data['left'][i],
+                        'top': ocr_data['top'][i],
+                        'width': ocr_data['width'][i],
+                        'height': ocr_data['height'][i]
+                    })
+            
+            html = ""
+            img_width = img.width
+            
+            # Procesar párrafos ordenados
+            for par_key in sorted(paragraphs.keys()):
+                paragraph_lines = paragraphs[par_key]
+                paragraph_html = ""
+                
+                # Procesar líneas del párrafo
+                for line_key in sorted(paragraph_lines.keys(), key=lambda k: k[2]):  # Ordenar por line_num
+                    line = paragraph_lines[line_key]
+                    if not line:
+                        continue
+                    
+                    # Ordenar palabras por posición horizontal
+                    line.sort(key=lambda w: w['left'])
+                    
+                    # Construir texto de la línea con espaciado preciso
+                    line_text = ""
+                    first_word = line[0]
+                    last_word = line[-1]
+                    
+                    # Calcular posiciones para detectar centrado
+                    line_start = first_word['left']
+                    line_end = last_word['left'] + last_word['width']
+                    line_width = line_end - line_start
+                    
+                    # Detectar si es centrado: debe tener espacio significativo tanto al inicio como al final
+                    margin_left = line_start
+                    margin_right = img_width - line_end
+                    min_margin = img_width * 0.15  # Al menos 15% de margen en cada lado
+                    
+                    # Una línea está centrada si:
+                    # 1. Tiene márgenes significativos en ambos lados
+                    # 2. Los márgenes son relativamente similares (diferencia < 20% del ancho de imagen)
+                    # 3. No ocupa más del 70% del ancho de la imagen
+                    is_centered = (
+                        margin_left > min_margin and 
+                        margin_right > min_margin and
+                        abs(margin_left - margin_right) < (img_width * 0.2) and
+                        line_width < (img_width * 0.7)
+                    )
+                    
+                    # Calcular indentación para líneas no centradas
+                    indent_level = 0
+                    if not is_centered and margin_left > 20:
+                        indent_level = max(0, int(margin_left / 25))
+                    
+                    # Construir el texto de la línea
+                    line_text += first_word['text']
+                    prev_right = first_word['left'] + first_word['width']
+                    
+                    # Agregar resto de palabras con espaciado apropiado
+                    for word in line[1:]:
+                        gap = word['left'] - prev_right
+                        
+                        if gap > 40:  # Espacio muy grande - posible tabulación
+                            spaces = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"  # 5 espacios no separables
+                        elif gap > 20:  # Espacio grande
+                            spaces = "&nbsp;&nbsp;"  # 2 espacios no separables
+                        else:  # Espacio normal
+                            spaces = " "
+                        
+                        line_text += spaces + word['text']
+                        prev_right = word['left'] + word['width']
+                    
+                    # Aplicar estilos según el tipo de línea
+                    if is_centered:
+                        # Línea centrada - probablemente un título
+                        paragraph_html += f"<p style='text-align: center; font-weight: bold; margin: 12px 0; font-size: 14px;'>{line_text.strip()}</p>\n"
+                    else:
+                        # Línea normal - aplicar justificación y sangría
+                        indent_style = f"margin-left: {indent_level * 15}px; " if indent_level > 0 else ""
+                        
+                        # Detectar si es una línea larga que debería justificarse
+                        # (más del 60% del ancho disponible y más de 6 palabras)
+                        should_justify = (
+                            line_width > (img_width * 0.6) and 
+                            len(line) > 6 and 
+                            not line_text.strip().endswith(':')  # No justificar líneas que terminan en :
+                        )
+                        
+                        text_align = "text-align: justify; " if should_justify else "text-align: left; "
+                        
+                        paragraph_html += f"<p style='{indent_style}{text_align}margin: 6px 0; line-height: 1.4;'>{line_text.strip()}</p>\n"
+                
+                # Agregar el párrafo completo
+                if paragraph_html.strip():
+                    html += f"<div style='margin-bottom: 12px;'>\n{paragraph_html}</div>\n"
+            
+            # Envolver todo en un contenedor
+            final_html = f"""
+            <div style='font-family: "Times New Roman", serif; line-height: 1.5; max-width: 800px; margin: 0 auto; padding: 20px; font-size: 13px;'>
+                {html}
+            </div>
+            """
+            
+            return final_html.strip()
+            
         except Exception as e:
-            return f"Error al extraer texto de la imagen: {str(e)}"
+            return f"Error al extraer texto de imagen: {str(e)}"
+            
+            
 
     def _extraer_texto_docx(self, doc):
         html = ""
