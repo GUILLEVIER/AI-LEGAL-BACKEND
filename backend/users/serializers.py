@@ -25,20 +25,27 @@ class UsuariosSerializer(serializers.ModelSerializer):
 
 
 class UsuariosCreateSerializer(serializers.ModelSerializer):
-    """Serializer específico para la creación de usuarios que permite escribir empresa"""
+    """Serializer específico para la creación de usuarios que permite escribir empresa y grupos"""
+    groups = serializers.PrimaryKeyRelatedField(
+        queryset=Group.objects.all(),
+        many=True,
+        required=False,
+        allow_empty=True
+    )
     
     class Meta:
         model = Usuarios
         fields = (
-            "id", "username", "email", "first_name", "last_name", "empresa", "password"
+            "id", "username", "email", "first_name", "last_name", "empresa", "password", "groups"
         )
         extra_kwargs = {
             'password': {'write_only': True}
         }
     
     def create(self, validated_data):
-        # Extraer la contraseña para manejarla por separado
+        # Extraer la contraseña y grupos para manejarlos por separado
         password = validated_data.pop('password', None)
+        groups_data = validated_data.pop('groups', [])
         
         # Crear el usuario
         usuario = Usuarios.objects.create(**validated_data)
@@ -48,7 +55,49 @@ class UsuariosCreateSerializer(serializers.ModelSerializer):
             usuario.set_password(password)
             usuario.save()
         
+        # Asignar grupos si se proporcionaron
+        if groups_data:
+            usuario.groups.set(groups_data)
+        
         return usuario
+
+
+class UsuariosUpdateSerializer(serializers.ModelSerializer):
+    """Serializer específico para la actualización de usuarios que permite manejar grupos"""
+    groups = serializers.PrimaryKeyRelatedField(
+        queryset=Group.objects.all(),
+        many=True,
+        required=False,
+        allow_empty=True
+    )
+    
+    class Meta:
+        model = Usuarios
+        fields = (
+            "id", "username", "email", "first_name", "last_name", "empresa", "groups"
+        )
+        extra_kwargs = {
+            'username': {'required': False},
+            'email': {'required': False},
+        }
+    
+    def update(self, instance, validated_data):
+        # Extraer grupos si están presentes
+        groups_data = validated_data.pop('groups', None)
+        
+        # Actualizar campos básicos
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Manejar grupos si se proporcionaron
+        if groups_data is not None:
+            # Limpiar grupos existentes y asignar los nuevos
+            instance.groups.clear()
+            if groups_data:  # Si hay grupos para asignar
+                instance.groups.set(groups_data)
+        
+        return instance
 
 
 class CustomPasswordChangeSerializer(PasswordChangeSerializer):
