@@ -287,6 +287,8 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 {html}
             </div>
             """
+
+            print(final_html)
             
             return final_html.strip()
             

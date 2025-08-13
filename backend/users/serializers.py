@@ -8,13 +8,20 @@ from companies.serializers import EmpresasSerializer
 
 class UsuariosSerializer(serializers.ModelSerializer):
     empresa = EmpresasSerializer(read_only=True)
+    grupos = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuarios
         fields = (
-            "id", "username", "email", "first_name", "last_name", "empresa"
+            "id", "username", "email", "first_name", "last_name", "empresa", "grupos"
         )
-        read_only_fields = ["empresa"]
+        read_only_fields = ["empresa", "grupos"]
+
+    def get_grupos(self, obj):
+        """Obtiene los grupos a los que pertenece el usuario"""
+        grupos = [group.name for group in obj.groups.all()]
+        return ", ".join(grupos) if grupos else "Sin grupo"
+
 
 
 class UsuariosCreateSerializer(serializers.ModelSerializer):
