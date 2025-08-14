@@ -8,7 +8,7 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from core.mixins import StandardResponseMixin
 from .models import Usuarios
-from .serializers import UsuariosSerializer, UsuariosCreateSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer
+from .serializers import UsuariosSerializer, UsuariosCreateSerializer, UsuariosUpdateSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer
 
 class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     queryset = Usuarios.objects.all()
@@ -18,8 +18,10 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """Usar diferentes serializers según la acción"""
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action == 'create':
             return UsuariosCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return UsuariosUpdateSerializer
         return UsuariosSerializer
 
     def get_queryset(self):
@@ -104,6 +106,17 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                         http_status=status.HTTP_403_FORBIDDEN
                     )
             
+            # Lógica de asignación de grupos
+            '''if 'grupos' in data:
+                # Solo admins pueden asignar grupos
+                if not (user.is_staff or user.is_superuser):
+                    return self.error_response(
+                        errors="No tienes permisos para asignar grupos",
+                        message="Solo los administradores pueden asignar grupos a usuarios",
+                        code="grupo_assign_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    )
+            '''
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             usuario = serializer.save()
@@ -145,19 +158,22 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 if 'empresa' in data:
                     data.pop('empresa')
             
-            # Validar que no se esté intentando cambiar campos sensibles sin permisos
-            sensitive_fields = ['is_staff', 'is_superuser', 'groups', 'user_permissions']
+            # Validar permisos para campos sensibles
+            '''sensitive_fields = ['is_staff', 'is_superuser', 'user_permissions']
             if not (user.is_staff or user.is_superuser):
                 for field in sensitive_fields:
                     if field in data:
                         data.pop(field)
-            
+                # Los usuarios regulares no pueden modificar grupos
+                if 'grupos' in data:
+                    data.pop('grupos')
+            '''
             serializer = self.get_serializer(instance, data=data, partial=kwargs.get('partial', False))
             serializer.is_valid(raise_exception=True)
             usuario = serializer.save()
             
             return self.success_response(
-                data=serializer.data,
+                data=UsuariosSerializer(usuario).data,  # Usar el serializer de lectura para la respuesta
                 message="Usuario actualizado exitosamente",
                 code="usuario_updated",
                 http_status=status.HTTP_200_OK
