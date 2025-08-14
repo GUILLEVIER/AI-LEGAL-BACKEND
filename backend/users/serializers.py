@@ -26,17 +26,18 @@ class UsuariosSerializer(serializers.ModelSerializer):
 
 class UsuariosCreateSerializer(serializers.ModelSerializer):
     """Serializer específico para la creación de usuarios que permite escribir empresa y grupos"""
-    groups = serializers.PrimaryKeyRelatedField(
+    grupos = serializers.PrimaryKeyRelatedField(
         queryset=Group.objects.all(),
         many=True,
         required=False,
-        allow_empty=True
+        allow_empty=True,
+        source='groups'  # Mapea el campo 'grupos' al atributo 'groups' del modelo
     )
     
     class Meta:
         model = Usuarios
         fields = (
-            "id", "username", "email", "first_name", "last_name", "empresa", "password", "groups"
+            "id", "username", "email", "first_name", "last_name", "empresa", "password", "grupos"
         )
         extra_kwargs = {
             'password': {'write_only': True}
@@ -64,17 +65,18 @@ class UsuariosCreateSerializer(serializers.ModelSerializer):
 
 class UsuariosUpdateSerializer(serializers.ModelSerializer):
     """Serializer específico para la actualización de usuarios que permite manejar grupos"""
-    groups = serializers.PrimaryKeyRelatedField(
+    grupos = serializers.PrimaryKeyRelatedField(
         queryset=Group.objects.all(),
         many=True,
         required=False,
-        allow_empty=True
+        allow_empty=True,
+        source='groups'  # Mapea el campo 'grupos' al atributo 'groups' del modelo
     )
     
     class Meta:
         model = Usuarios
         fields = (
-            "id", "username", "email", "first_name", "last_name", "empresa", "groups"
+            "id", "username", "email", "first_name", "last_name", "empresa", "grupos"
         )
         extra_kwargs = {
             'username': {'required': False},

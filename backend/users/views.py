@@ -107,7 +107,7 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     )
             
             # Lógica de asignación de grupos
-            if 'groups' in data:
+            '''if 'grupos' in data:
                 # Solo admins pueden asignar grupos
                 if not (user.is_staff or user.is_superuser):
                     return self.error_response(
@@ -116,7 +116,7 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                         code="grupo_assign_forbidden",
                         http_status=status.HTTP_403_FORBIDDEN
                     )
-            
+            '''
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             usuario = serializer.save()
@@ -159,20 +159,15 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     data.pop('empresa')
             
             # Validar permisos para campos sensibles
-            sensitive_fields = ['is_staff', 'is_superuser', 'user_permissions']
-            print("PERMISO: ", user.user_permissions)
-            print("is_staff: ", user.is_staff)
-            print("is_superuser: ", user.is_superuser)
+            '''sensitive_fields = ['is_staff', 'is_superuser', 'user_permissions']
             if not (user.is_staff or user.is_superuser):
-                print("PASO")
                 for field in sensitive_fields:
                     if field in data:
                         data.pop(field)
                 # Los usuarios regulares no pueden modificar grupos
-                if 'groups' in data:
-                    print("GROUPS: ", data)
-                    data.pop('groups')
-            print("DATA: ", data)
+                if 'grupos' in data:
+                    data.pop('grupos')
+            '''
             serializer = self.get_serializer(instance, data=data, partial=kwargs.get('partial', False))
             serializer.is_valid(raise_exception=True)
             usuario = serializer.save()
