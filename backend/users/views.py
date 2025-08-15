@@ -27,21 +27,27 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Filtra los usuarios según el tipo de usuario:
-        - Admin/Superuser: Ve todos los usuarios (excepto él mismo)
-        - Usuario regular: Ve solo usuarios de su misma empresa (excepto él mismo)
+        - Usuario con grupo Admin: Ve todos los usuarios de su empresa (excepto él mismo)
+        - Superuser: Ve todos los usuarios (excepto él mismo)
+        - Usuario regular: Solo puede verse a si mismo
         """
         user = self.request.user
         
-        # Si es admin o superuser, mostrar todos los usuarios excepto él mismo
+        # Si es superuser o staff, mostrar todos los usuarios excepto él mismo
         if user.is_staff or user.is_superuser:
             return Usuarios.objects.exclude(id=user.id)
         
-        # Si es usuario regular, filtrar por empresa y excluir al usuario actual
-        if hasattr(user, 'empresa') and user.empresa:
-            return Usuarios.objects.filter(empresa=user.empresa).exclude(id=user.id)
-        else:
-            # Si el usuario no tiene empresa asignada, no mostrar ningún usuario
-            return Usuarios.objects.none()
+        # Verificar si el usuario tiene el grupo "Admin"
+        if user.groups.filter(name='Admin').exists():
+            # Si tiene grupo Admin y empresa, mostrar usuarios de su empresa
+            if hasattr(user, 'empresa') and user.empresa:
+                return Usuarios.objects.filter(empresa=user.empresa).exclude(id=user.id)
+            else:
+                # Si no tiene empresa asignada, no mostrar ningún usuario
+                return Usuarios.objects.none()
+        
+        # Usuario regular sin grupo Admin: solo puede ver su propia información
+        return Usuarios.objects.filter(id=user.id)
 
     def get_object(self):
         """Verificar permisos antes de obtener el objeto"""
@@ -52,24 +58,8 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         if self.action == 'destroy' and obj.id == user.id:
             raise PermissionDenied("No puedes eliminar tu propia cuenta")
         
-        # Si es admin o superuser, puede hacer cualquier operación
-        if user.is_staff or user.is_superuser:
-            return obj
-        
-        # Si es usuario regular, solo puede operar con usuarios de su misma empresa
-        if hasattr(user, 'empresa') and user.empresa:
-            if obj.empresa == user.empresa:
-                return obj
-        
-        # Si no tiene permisos, lanzar excepción
-        action_messages = {
-            'retrieve': 'ver',
-            'update': 'editar',
-            'partial_update': 'editar',
-            'destroy': 'eliminar'
-        }
-        action_name = action_messages.get(self.action, 'acceder a')
-        raise PermissionDenied(f"No tienes permisos para {action_name} este usuario")
+        # El queryset ya maneja los permisos básicos, pero aquí validamos casos especiales
+        return obj
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -85,9 +75,19 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
+            user = request.user
+            
+            # Verificar permisos para crear usuarios
+            if not (user.is_superuser or user.is_staff or user.groups.filter(name='Admin').exists()):
+                return self.error_response(
+                    errors="No tienes permisos para crear usuarios",
+                    message="Solo usuarios con grupo Admin, staff o superuser pueden crear usuarios",
+                    code="usuario_create_forbidden",
+                    http_status=status.HTTP_403_FORBIDDEN
+                )
+            
             # Copiar los datos de la solicitud
             data = request.data.copy()
-            user = request.user
             
             # Lógica de asignación de empresa
             if user.is_staff or user.is_superuser:
@@ -107,16 +107,16 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     )
             
             # Lógica de asignación de grupos
-            '''if 'grupos' in data:
-                # Solo admins pueden asignar grupos
-                if not (user.is_staff or user.is_superuser):
+            if 'grupos' in data:
+                # Solo admins, staff y con grupo Admin pueden asignar grupos
+                if not (user.is_staff or user.is_superuser or user.groups.filter(name='Admin').exists()):
                     return self.error_response(
                         errors="No tienes permisos para asignar grupos",
                         message="Solo los administradores pueden asignar grupos a usuarios",
                         code="grupo_assign_forbidden",
                         http_status=status.HTTP_403_FORBIDDEN
                     )
-            '''
+            
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             usuario = serializer.save()
@@ -147,27 +147,54 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
+            user = request.user
+            
+            # Verificar si el usuario es admin (Admin, staff o superuser)
+            is_admin = user.is_superuser or user.is_staff or user.groups.filter(name='Admin').exists()
+            
+            # Verificar permisos para actualizar usuarios
+            if not is_admin:
+                # Los usuarios regulares solo pueden actualizar su propia información
+                if instance.pk != user.pk:
+                    return self.error_response(
+                        errors="No tienes permisos para actualizar otros usuarios",
+                        message="Solo puedes actualizar tu propia información",
+                        code="usuario_update_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    )
             
             # Copiar los datos de la solicitud
             data = request.data.copy()
-            user = request.user
             
             # Lógica de asignación de empresa para actualización
-            if not (user.is_staff or user.is_superuser):
+            if not is_admin:
                 # Si es usuario regular, no puede cambiar la empresa
                 if 'empresa' in data:
                     data.pop('empresa')
             
+            # Lógica de asignación de grupos
+            if 'grupos' in data:
+                # Solo admins pueden asignar grupos
+                if not is_admin:
+                    return self.error_response(
+                        errors="No tienes permisos para asignar grupos",
+                        message="Solo los administradores pueden asignar grupos a usuarios",
+                        code="grupo_assign_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    )
+            
             # Validar permisos para campos sensibles
-            '''sensitive_fields = ['is_staff', 'is_superuser', 'user_permissions']
-            if not (user.is_staff or user.is_superuser):
+            sensitive_fields = ['is_staff', 'is_superuser', 'user_permissions']
+            if not is_admin:
                 for field in sensitive_fields:
                     if field in data:
-                        data.pop(field)
-                # Los usuarios regulares no pueden modificar grupos
-                if 'grupos' in data:
-                    data.pop('grupos')
-            '''
+                        return self.error_response(
+                            errors=f"No tienes permisos para modificar el campo '{field}'",
+                            message="Solo los administradores pueden modificar campos sensibles",
+                            code="sensitive_field_forbidden",
+                            http_status=status.HTTP_403_FORBIDDEN
+                        )
+            
             serializer = self.get_serializer(instance, data=data, partial=kwargs.get('partial', False))
             serializer.is_valid(raise_exception=True)
             usuario = serializer.save()
@@ -183,12 +210,43 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.handle_exception(e)
 
     def partial_update(self, request, *args, **kwargs):
+        # Solo admins pueden hacer actualizaciones parciales
+        if not request.user.is_staff:
+            raise PermissionDenied("Solo administradores pueden usar PATCH")
+        # Validaciones específicas para PATCH
+        if 'password' in request.data:
+            return self.error_response(
+                errors="No se puede cambiar la contraseña con PATCH",
+                code="password_patch_forbidden"
+            )
         kwargs['partial'] = True
         return self.update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
+            user = request.user
+            
+            # Verificar permisos para eliminar usuarios
+            can_delete = False
+            
+            # Staff y superuser pueden eliminar cualquier usuario
+            if user.is_staff or user.is_superuser:
+                can_delete = True
+            # Usuarios con grupo Admin pueden eliminar usuarios de su misma empresa
+            elif user.groups.filter(name='Admin').exists():
+                if hasattr(user, 'empresa') and user.empresa and hasattr(instance, 'empresa'):
+                    if user.empresa == instance.empresa:
+                        can_delete = True
+            
+            if not can_delete:
+                return self.error_response(
+                    errors="No tienes permisos para eliminar usuarios",
+                    message="Solo usuarios staff, superuser o Admin de la misma empresa pueden eliminar usuarios",
+                    code="usuario_delete_forbidden",
+                    http_status=status.HTTP_403_FORBIDDEN
+                )
+            
             usuario_info = {
                 'id': instance.id,
                 'username': instance.username,
