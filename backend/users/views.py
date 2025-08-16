@@ -129,7 +129,13 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             )
             
         except Exception as e:
-            return self.handle_exception(e)
+            return self.error_response(
+                        errors="No tienes permisos para crear este usuario",
+                        message="Solo los administradores pueden crear usuarios",
+                        code="usuario_create_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    )
+            #self.handle_exception(e)
 
     def retrieve(self, request, *args, **kwargs):
         try:
@@ -142,7 +148,13 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 http_status=status.HTTP_200_OK
             )
         except Exception as e:
-            return self.handle_exception(e)
+            return self.error_response(
+                        errors="No tienes permisos para ver este usuario",
+                        message="Solo los administradores pueden ver los detalles de otros usuarios",
+                        code="usuario_detail_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    )
+            #self.handle_exception(e)
 
     def update(self, request, *args, **kwargs):
         try:
@@ -207,7 +219,13 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             )
             
         except Exception as e:
-            return self.handle_exception(e)
+            return self.error_response(
+                        errors="No tienes permisos para actualizar este usuario",
+                        message="Solo los administradores pueden actualizar usuarios",
+                        code="usuario_update_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    ) 
+            #self.handle_exception(e)
 
     def partial_update(self, request, *args, **kwargs):
         # Solo admins pueden hacer actualizaciones parciales
@@ -234,8 +252,12 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             if user.is_staff or user.is_superuser:
                 can_delete = True
             # Usuarios con grupo Admin pueden eliminar usuarios de su misma empresa
+            # pero NO pueden eliminar usuarios staff o superuser
             elif user.groups.filter(name='Admin').exists():
-                if hasattr(user, 'empresa') and user.empresa and hasattr(instance, 'empresa'):
+                # Los Admin no pueden eliminar staff ni superuser
+                if instance.is_staff or instance.is_superuser:
+                    can_delete = False
+                elif hasattr(user, 'empresa') and user.empresa and hasattr(instance, 'empresa'):
                     if user.empresa == instance.empresa:
                         can_delete = True
             
@@ -264,7 +286,13 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             )
             
         except Exception as e:
-            return self.handle_exception(e)
+            return self.error_response(
+                        errors="No tienes permisos para eliminar este usuario",
+                        message="Solo los administradores pueden eliminar usuarios",
+                        code="usuario_delete_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    )
+            #self.handle_exception(e)
 
     @action(detail=True, methods=['get'], url_path='permissions')
     def permissions(self, request, pk=None):
@@ -305,7 +333,13 @@ class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 http_status=status.HTTP_200_OK
             )
         except Exception as e:
-            return self.handle_exception(e)
+            return self.error_response(
+                        errors="No tienes permisos para obtener los permisos de este usuario",
+                        message="Solo los administradores pueden obtener los permisos de usuarios",
+                        code="usuario_permissions_forbidden",
+                        http_status=status.HTTP_403_FORBIDDEN
+                    )
+            #self.handle_exception(e)
 
     @action(detail=False, methods=['get'], url_path='me')
     def me(self, request):
