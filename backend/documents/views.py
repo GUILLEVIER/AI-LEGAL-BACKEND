@@ -151,18 +151,23 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     http_status=401
                 )
             
+            # Generar HTML con campos a partir del texto extraído
+            #html_con_campos = self._generar_html_con_campos(texto_extraido)
+            
             # Crear registro en base de datos
             documento = DocumentoSubido.objects.create(
                 usuario=request.user,
                 nombre_original=archivo.name,
                 tipo=tipo,
-                archivo_url=ruta_completa
+                archivo_url=ruta_completa,
+                html=texto_extraido
             )
 
             # Preparar datos de respuesta
             data = {
                 'id': documento.id,
                 'texto_extraido': texto_extraido,
+                'html': texto_extraido,
                 'tipo': tipo,
                 'nombre_original': archivo.name,
                 'archivo_url': ruta_completa,
@@ -495,6 +500,45 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         return html
         #return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
 
+    '''def _generar_html_con_campos(self, texto):
+        """
+        Convierte texto plano en HTML con marcadores de campos para variables comunes
+        """
+        import re
+        
+        # Convertir texto a HTML básico
+        html = texto.replace('\n', '<br>\n')
+        
+        # Patrones comunes para identificar campos que podrían ser variables
+        # Orden importante: patrones más específicos primero
+        patrones_campos = [
+            # RUT chileno (formato específico)
+            (r'\b(\d{1,2}[.,]\d{3}[.,]\d{3}[-]?[0-9kK])\b', '{{rut}}'),
+            # Email
+            (r'\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b', '{{email}}'),
+            # Teléfono chileno
+            (r'\b(\+?56\s?9\s?\d{4}\s?\d{4})\b', '{{telefono}}'),
+            # Fechas (dd/mm/yyyy o dd-mm-yyyy)
+            (r'\b(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\b', '{{fecha}}'),
+            # Montos con símbolo $ (más específico)
+            (r'\$\s?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)', '${{monto}}'),
+            # Nombres completos (al final para evitar conflictos)
+            (r'\b([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)\b', '{{nombre_completo}}'),
+        ]
+        
+        # Aplicar patrones para crear marcadores de campos
+        for patron, marcador in patrones_campos:
+            html = re.sub(patron, marcador, html)
+        
+        # Envolver en estructura HTML básica
+        html_completo = f"""
+        <div class="documento-contenido">
+            {html}
+        </div>
+        """
+        
+        return html_completo.strip()'''
+
     def retrieve(self, request, *args, **kwargs):
         """Obtener documento subido específico con formato estándar"""
         try:
@@ -562,7 +606,7 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         """Eliminar documento subido con formato estándar"""
         try:
             instance = self.get_object()
-            documento_nombre = instance.nombre  # Guardamos el nombre antes de eliminar
+            documento_nombre = instance.nombre_original  # Guardamos el nombre antes de eliminar
             instance.delete()
             return self.success_response(
                 data={"deleted_document": documento_nombre},
@@ -573,8 +617,8 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         except Exception as e:
             return self.error_response(
                 errors=str(e),
-                message="Error al eliminar el campo disponible",
-                code="available_field_delete_error",
+                message="Error al eliminar el documento subido",
+                code="document_uploaded_delete_error",
                 http_status=500
             )
 
@@ -1054,13 +1098,14 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                         code="authentication_required",
                         http_status=401
                     )
-                
+
                 # Crear documento generado
                 documento = DocumentoGenerado.objects.create(
                     plantilla=plantilla,
                     usuario=request.user,
                     datos_rellenados=datos,
-                    html_resultante=html_resultante
+                    html_resultante=html_resultante,
+                    nombre=request.user.username + "_" + request.data['nombre'] + ".html"
                 )
 
                 return self.success_response(

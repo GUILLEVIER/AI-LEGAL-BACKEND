@@ -118,6 +118,22 @@ class PlanesListAPIView(StandardResponseMixin, generics.ListAPIView):
             **kwargs
         )
 
+class TribunalesListAPIView(StandardResponseMixin, generics.ListAPIView):
+    queryset = Tribunales.objects.all() # type: ignore
+    serializer_class = TribunalesSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        return self.paginated_list_response(
+            request,
+            queryset,
+            self.get_serializer_class(),
+            paginated_message="Listado paginado de tribunales",
+            unpaginated_message="Listado de tribunales obtenido correctamente",
+            code="tribunales_list",
+            error_code="tribunales_list_error"
+        )
+
 """
 # mixins
 class TribunalesView(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
@@ -200,7 +216,7 @@ class TribunalesViewset(viewsets.ModelViewSet):
     filterset_class = TribunalesFilter
 """
 
-
+'''
 class TribunalesListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
     queryset = Tribunales.objects.all() # type: ignore
     serializer_class = TribunalesSerializer
@@ -228,3 +244,4 @@ class TribunalesListAPIView(StandardResponseMixin, generics.ListCreateAPIView):
             http_status=201,
             **kwargs
         )
+'''

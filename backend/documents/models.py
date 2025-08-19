@@ -19,6 +19,7 @@ class DocumentoSubido(models.Model):
     nombre_original = models.CharField(max_length=255)
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
     archivo_url = models.CharField(max_length=500)
+    html = models.TextField(blank=True, null=True)
     fecha_subida = models.DateTimeField(default=timezone.now)
 
     class Meta:
