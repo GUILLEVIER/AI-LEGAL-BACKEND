@@ -565,10 +565,13 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         try:
             instance = self.get_object()
             documento_nombre = instance.nombre_original  # Guardamos el nombre antes de eliminar
+            
+            # El método delete() del modelo se encarga de eliminar el archivo físico automáticamente
             instance.delete()
+            
             return self.success_response(
                 data={"deleted_document": documento_nombre},
-                message="Documento subido eliminado exitosamente",
+                message="Documento subido eliminado exitosamente (archivo físico incluido)",
                 code="document_uploaded_deleted",
                 http_status=200
             )

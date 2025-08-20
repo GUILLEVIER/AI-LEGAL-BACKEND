@@ -3,6 +3,7 @@ from users.models import Usuarios
 from companies.models import Empresas
 from companies.models import Tribunales
 from django.utils import timezone
+from django.core.files.storage import default_storage
 import json
 
 
@@ -29,6 +30,20 @@ class DocumentoSubido(models.Model):
     
     def __str__(self):
         return f"{self.nombre_original} - {self.usuario.username}"
+    
+    def delete(self, *args, **kwargs):
+        """Sobrescribir delete para eliminar también el archivo físico"""
+        # Eliminar el archivo físico antes de eliminar el registro
+        if self.archivo_url:
+            try:
+                if default_storage.exists(self.archivo_url):
+                    default_storage.delete(self.archivo_url)
+            except Exception as e:
+                # Log del error pero continuar con la eliminación del registro
+                print(f"Error al eliminar archivo físico {self.archivo_url}: {e}")
+        
+        # Llamar al método delete original
+        super().delete(*args, **kwargs)
 
 class CampoDisponible(models.Model):
     TIPO_DATO_CHOICES = [
