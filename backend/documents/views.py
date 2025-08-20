@@ -61,9 +61,31 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser)
 
     def list(self, request, *args, **kwargs):
-        """Listar documentos subidos sin paginación"""
+        """Listar documentos subidos con filtrado por roles"""
         try:
-            queryset = self.get_queryset()
+            user = request.user
+            
+            # Si es superuser o staff, puede ver todos los documentos
+            if user.is_superuser or user.is_staff:
+                queryset = DocumentoSubido.objects.all()
+            
+            # Si pertenece al grupo 'Admin', puede ver documentos de usuarios de su empresa
+            elif user.groups.filter(name='Admin').exists():
+                if user.empresa:
+                    # Obtener todos los usuarios de la misma empresa
+                    usuarios_empresa = Usuarios.objects.filter(empresa=user.empresa)
+                    queryset = DocumentoSubido.objects.filter(usuario__in=usuarios_empresa)
+                else:
+                    # Si no tiene empresa asignada, solo ve sus documentos
+                    queryset = DocumentoSubido.objects.filter(usuario=user)
+            
+            # Usuario común: solo ve sus propios documentos
+            else:
+                queryset = DocumentoSubido.objects.filter(usuario=user)
+            
+            # Ordenar por fecha de subida descendente
+            queryset = queryset.order_by('-fecha_subida')
+            
             serializer = self.get_serializer(queryset, many=True)
             return self.success_response(
                 data=serializer.data,
