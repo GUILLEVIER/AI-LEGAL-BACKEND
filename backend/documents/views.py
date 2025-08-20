@@ -156,13 +156,15 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 usuario=request.user,
                 nombre_original=archivo.name,
                 tipo=tipo,
-                archivo_url=ruta_completa
+                archivo_url=ruta_completa,
+                html=texto_extraido
             )
 
             # Preparar datos de respuesta
             data = {
                 'id': documento.id,
                 'texto_extraido': texto_extraido,
+                'html': texto_extraido,
                 'tipo': tipo,
                 'nombre_original': archivo.name,
                 'archivo_url': ruta_completa,
@@ -562,19 +564,22 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         """Eliminar documento subido con formato estándar"""
         try:
             instance = self.get_object()
-            documento_nombre = instance.nombre  # Guardamos el nombre antes de eliminar
+            documento_nombre = instance.nombre_original  # Guardamos el nombre antes de eliminar
+            
+            # El método delete() del modelo se encarga de eliminar el archivo físico automáticamente
             instance.delete()
+            
             return self.success_response(
                 data={"deleted_document": documento_nombre},
-                message="Documento subido eliminado exitosamente",
+                message="Documento subido eliminado exitosamente (archivo físico incluido)",
                 code="document_uploaded_deleted",
                 http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
-                message="Error al eliminar el campo disponible",
-                code="available_field_delete_error",
+                message="Error al eliminar el documento subido",
+                code="document_uploaded_delete_error",
                 http_status=500
             )
 
@@ -699,8 +704,8 @@ class TipoPlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet
             serializer_class=self.serializer_class,
             paginated_message="Tipos de plantilla de documento obtenidos exitosamente (paginados)",
             unpaginated_message="Tipos de plantilla de documento obtenidos exitosamente",
-            code="template_types_retrieved",
-            error_code="template_types_error"
+            code="tipo_plantilla_retrieved",
+            error_code="tipo_plantilla_error"
         )
     
     def create(self, request, *args, **kwargs):
@@ -708,9 +713,9 @@ class TipoPlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet
         return self.standard_create_response(
             request=request,
             success_message="Tipo de plantilla de documento creado exitosamente",
-            code="template_type_created",
+            code="tipo_plantilla_created",
             error_message="Error al crear tipo de plantilla de documento",
-            error_code="template_type_creation_error"
+            error_code="tipo_plantilla_creation_error"
         )
     
     def retrieve(self, request, *args, **kwargs):
@@ -721,14 +726,14 @@ class TipoPlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet
             return self.success_response(
                 data=serializer.data,
                 message="Tipo de plantilla de documento obtenido exitosamente",
-                code="template_type_retrieved",
+                code="tipo_plantilla_retrieved",
                 http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al obtener el tipo de plantilla de documento",
-                code="template_type_error",
+                code="tipo_plantilla_error",
                 http_status=500
             )
     
@@ -739,14 +744,14 @@ class TipoPlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet
             return self.success_response(
                 data=response.data,
                 message="Tipo de plantilla de documento actualizado exitosamente",
-                code="template_type_updated",
+                code="tipo_plantilla_updated",
                 http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al actualizar el tipo de plantilla de documento",
-                code="template_type_update_error",
+                code="tipo_plantilla_update_error",
                 http_status=400
             )
     
@@ -757,14 +762,14 @@ class TipoPlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet
             return self.success_response(
                 data=response.data,
                 message="Tipo de plantilla de documento actualizado exitosamente",
-                code="template_type_updated",
+                code="tipo_plantilla_updated",
                 http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al actualizar el tipo de plantilla de documento",
-                code="template_type_update_error",
+                code="tipo_plantilla_update_error",
                 http_status=400
             )
     
@@ -774,16 +779,15 @@ class TipoPlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet
             instance = self.get_object()
             instance.delete()
             return self.success_response(
-                data=None,
                 message="Tipo de plantilla de documento eliminado exitosamente",
-                code="template_type_deleted",
-                http_status=204
+                code="tipo_plantilla_documento_deleted",
+                http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al eliminar el tipo de plantilla de documento",
-                code="template_type_delete_error",
+                code="tipo_plantilla_documento_delete_error",
                 http_status=500
             )
 
@@ -799,8 +803,8 @@ class TipoPlantillaDocumentoListAPIView(StandardResponseMixin, generics.ListAPIV
             serializer_class=self.serializer_class,
             paginated_message="Tipos de plantilla de documento obtenidos exitosamente (paginados)",
             unpaginated_message="Tipos de plantilla de documento obtenidos exitosamente",
-            code="template_types_retrieved",
-            error_code="template_types_error"
+            code="tipo_plantilla_retrieved",
+            error_code="tipo_plantilla_error"
         )
 
 class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
@@ -866,12 +870,12 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=plantillas_con_favoritos,
                 message="Plantillas de documentos obtenidas exitosamente",
-                code="templates_retrieved"
+                code="plantillas_retrieved"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener plantillas de documentos: {str(e)}",
-                code="templates_retrieval_error"
+                code="plantillas_retrieval_error"
             )
 
     def create(self, request, *args, **kwargs):
@@ -891,18 +895,18 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 return self.standard_create_response(
                     serializer,
                     message="Plantilla de documento creada exitosamente",
-                    code="template_created"
+                    code="plantilla_created"
                 )
             else:
                 return self.error_response(
                     message="Datos inválidos para crear plantilla de documento",
-                    code="template_creation_error",
+                    code="plantilla_creation_error",
                     errors=serializer.errors
                 )
         except Exception as e:
             return self.error_response(
                 message=f"Error al crear plantilla de documento: {str(e)}",
-                code="template_creation_error"
+                code="plantilla_creation_error"
             )
 
     def retrieve(self, request, *args, **kwargs):
@@ -913,12 +917,12 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=serializer.data,
                 message="Plantilla de documento obtenida exitosamente",
-                code="template_retrieved"
+                code="plantilla_retrieved"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener plantilla de documento: {str(e)}",
-                code="template_retrieval_error"
+                code="plantilla_retrieval_error"
             )
 
     def update(self, request, *args, **kwargs):
@@ -931,56 +935,32 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 return self.success_response(
                     data=serializer.data,
                     message="Plantilla de documento actualizada exitosamente",
-                    code="template_updated"
+                    code="plantilla_updated"
                 )
             else:
                 return self.error_response(
                     message="Datos inválidos para actualizar plantilla de documento",
-                    code="template_update_error",
+                    code="plantilla_update_error",
                     errors=serializer.errors
                 )
         except Exception as e:
             return self.error_response(
                 message=f"Error al actualizar plantilla de documento: {str(e)}",
-                code="template_update_error"
-            )
-
-    def destroy(self, request, *args, **kwargs):
-        """Eliminar plantilla de documento"""
-        try:
-            instance = self.get_object()
-            instance.delete()
-            return self.success_response(
-                message="Plantilla de documento eliminada exitosamente",
-                code="template_deleted"
-            )
-        except Exception as e:
-            return self.error_response(
-                message=f"Error al eliminar plantilla de documento: {str(e)}",
-                code="template_deletion_error"
+                code="plantilla_update_error"
             )
 
     @action(detail=False, methods=['post'])
     def crear_plantilla(self, request):
-        print("=== CREAR PLANTILLA ===")
-        print("Request data:", request.data)
-        print("Request method:", request.method)
-        print("Request data:", request.data)
         """Crear plantilla con campos asociados"""
         try:
             serializer = CrearPlantillaSerializer(data=request.data)
-            print("Serializer is valid:", serializer.is_valid())
-            print("Serializer validated data:", serializer.validated_data if serializer.is_valid() else "Invalid")
             if serializer.is_valid():
                 # Obtener el tipo si se proporciona
                 tipo = None
-                print(f"Tipo ID recibido: {serializer.validated_data.get('tipo_id')}")
                 if 'tipo_id' in serializer.validated_data and serializer.validated_data['tipo_id']:
                     try:
                         tipo = TipoPlantillaDocumento.objects.get(id=serializer.validated_data['tipo_id'])
-                        print(f"Tipo encontrado: {tipo.nombre}")
                     except TipoPlantillaDocumento.DoesNotExist:
-                        print(f"Tipo no encontrado con ID: {serializer.validated_data['tipo_id']}")
                         pass
 
                 # Verificar autenticación
@@ -1013,24 +993,23 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 return self.success_response(
                     data={'id': plantilla.id},
                     message="Plantilla creada exitosamente",
-                    code="template_created"
+                    code="plantilla_created"
                 )
             else:
                 print("Serializer errors:", serializer.errors)
                 return self.error_response(
                     message="Datos inválidos para crear plantilla",
-                    code="template_creation_error",
+                    code="plantilla_creation_error",
                     errors=serializer.errors
                 )
         except Exception as e:
             return self.error_response(
                 message=f"Error al crear plantilla: {str(e)}",
-                code="template_creation_error"
+                code="plantilla_creation_error"
             )
 
     @action(detail=True, methods=['post'])
     def generar_documento(self, request, pk=None):
-        print("generar_documento")
         """Generar documento a partir de plantilla y datos"""
         try:
             plantilla = self.get_object()
@@ -1054,13 +1033,14 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                         code="authentication_required",
                         http_status=401
                     )
-                
+
                 # Crear documento generado
                 documento = DocumentoGenerado.objects.create(
                     plantilla=plantilla,
                     usuario=request.user,
                     datos_rellenados=datos,
-                    html_resultante=html_resultante
+                    html_resultante=html_resultante,
+                    nombre=request.user.username + "_" + request.data['nombre'] + ".html"
                 )
 
                 return self.success_response(
@@ -1069,24 +1049,21 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                         'html_resultante': html_resultante
                     },
                     message="Documento generado exitosamente",
-                    code="document_generated"
+                    code="documento_generated"
                 )
             else:
                 return self.error_response(
                     message="Datos inválidos para generar documento",
-                    code="document_generation_error",
+                    code="documento_generation_error",
                     errors=serializer.errors
                 )
         except Exception as e:
             return self.error_response(
                 message=f"Error al generar documento: {str(e)}",
-                code="document_generation_error"
+                code="documento_generation_error"
             )
 
     def partial_update(self, request, *args, **kwargs):
-        print("partial_update")
-        print(request)
-        print(request.data)
         try:
             instance = self.get_object()
             data = request.data
@@ -1095,11 +1072,10 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             if 'quitar_campo_id' in data:
                 campo_plantilla_id = data['quitar_campo_id']
                 from .models import CampoPlantilla
-                print(f"[LOG] Quitar campo asociado: {campo_plantilla_id}")
                 CampoPlantilla.objects.filter(id=campo_plantilla_id, plantilla=instance).delete()
                 return self.success_response(
                     message="Campo asociado eliminado exitosamente",
-                    code="template_field_removed"
+                    code="campo_asociado_removed"
                 )
 
             # Manejar tipo de plantilla
@@ -1117,7 +1093,6 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             if 'campos' in data:
                 from .models import CampoPlantilla
                 nuevos = data['campos']
-                print(f"[LOG] Campos recibidos en PATCH: {nuevos}")
                 nuevos_set = set((c['campo_id'], c['nombre_variable']) for c in nuevos)
                 actuales = list(instance.campos_asociados.all())
                 actuales_set = set((c.campo_id, c.nombre_variable) for c in actuales)
@@ -1125,13 +1100,11 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 # Eliminar los que ya no están
                 for c in actuales:
                     if (c.campo_id, c.nombre_variable) not in nuevos_set:
-                        print(f"[LOG] Eliminando campo asociado: {c.campo_id}, {c.nombre_variable}")
                         c.delete()
 
                 # Agregar los nuevos que no existen
                 for c in nuevos:
                     if (c['campo_id'], c['nombre_variable']) not in actuales_set:
-                        print(f"[LOG] Agregando campo asociado: {c['campo_id']}, {c['nombre_variable']}")
                         CampoPlantilla.objects.create(
                             plantilla=instance,
                             campo_id=c['campo_id'],
@@ -1145,34 +1118,32 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 return self.success_response(
                     data=serializer.data,
                     message="Plantilla de documento actualizada exitosamente",
-                    code="template_updated"
+                    code="plantilla_updated"
                 )
             else:
                 return self.error_response(
                     message="Datos inválidos para actualizar plantilla de documento",
-                    code="template_update_error",
+                    code="plantilla_update_error",
                     errors=serializer.errors
                 )
         except Exception as e:
             return self.error_response(
                 message=f"Error al actualizar plantilla de documento: {str(e)}",
-                code="template_update_error"
+                code="plantilla_update_error"
             )
 
     def destroy(self, request, *args, **kwargs):
-        print("destroy")
         try:
             instance = self.get_object()
-            print(f"[LOG] Eliminando plantilla: {instance.id} - {instance.nombre}")
             instance.delete()
             return self.success_response(
                 message="Plantilla de documento eliminada exitosamente",
-                code="template_deleted"
+                code="plantilla_deleted"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al eliminar plantilla de documento: {str(e)}",
-                code="template_deletion_error"
+                code="plantilla_deletion_error"
             )
 
 class DocumentoGeneradoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
@@ -1198,8 +1169,8 @@ class DocumentoGeneradoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             serializer_class=self.serializer_class,
             paginated_message="Documentos generados obtenidos exitosamente (paginados)",
             unpaginated_message="Documentos generados obtenidos exitosamente",
-            code="generated_documents_retrieved",
-            error_code="generated_documents_error"
+            code="documentos_generados_retrieved",
+            error_code="documentos_generados_error"
         )
     
     def create(self, request, *args, **kwargs):
@@ -1207,9 +1178,9 @@ class DocumentoGeneradoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         return self.standard_create_response(
             request=request,
             success_message="Documento generado exitosamente",
-            code="document_generated",
+            code="documento_generated",
             error_message="Error al generar documento",
-            error_code="document_generation_error"
+            error_code="documento_generation_error"
         )
     
     def retrieve(self, request, *args, **kwargs):
@@ -1220,14 +1191,14 @@ class DocumentoGeneradoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=serializer.data,
                 message="Documento generado obtenido exitosamente",
-                code="generated_document_retrieved",
+                code="documento_generated_retrieved",
                 http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al obtener el documento generado",
-                code="generated_document_error",
+                code="documento_generated_error",
                 http_status=500
             )
     
@@ -1238,14 +1209,14 @@ class DocumentoGeneradoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=response.data,
                 message="Documento generado actualizado exitosamente",
-                code="generated_document_updated",
+                code="documento_generated_updated",
                 http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al actualizar el documento generado",
-                code="generated_document_update_error",
+                code="documento_generated_update_error",
                 http_status=400
             )
     
@@ -1256,33 +1227,34 @@ class DocumentoGeneradoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=response.data,
                 message="Documento generado actualizado exitosamente",
-                code="generated_document_updated",
+                code="documento_generated_updated",
                 http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al actualizar el documento generado",
-                code="generated_document_update_error",
+                code="documento_generated_update_error",
                 http_status=400
             )
-    
+
     def destroy(self, request, *args, **kwargs):
         """Eliminar documento generado con formato estándar"""
         try:
             instance = self.get_object()
+            campo_nombre = instance.nombre  # Guardamos el nombre antes de eliminar
             instance.delete()
             return self.success_response(
-                data=None,
+                data={"deleted_generated_document": campo_nombre},
                 message="Documento generado eliminado exitosamente",
-                code="generated_document_deleted",
-                http_status=204
+                code="documento_generated_deleted",
+                http_status=200
             )
         except Exception as e:
             return self.error_response(
                 errors=str(e),
                 message="Error al eliminar el documento generado",
-                code="generated_document_delete_error",
+                code="documento_generated_delete_error",
                 http_status=500
             )
 
@@ -1352,7 +1324,7 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.GenericViewSet):
                 return self.success_response(
                     data=serializer.data,
                     message="Plantilla agregada a favoritos exitosamente",
-                    code="favorite_added",
+                    code="plantilla_favorita_added",
                     http_status=201
                 )
             else:
@@ -1360,7 +1332,7 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.GenericViewSet):
                 return self.success_response(
                     data=serializer.data,
                     message="La plantilla ya está en favoritos",
-                    code="favorite_exists",
+                    code="plantilla_favorita_exists",
                     http_status=200
                 )
                 
@@ -1368,7 +1340,7 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.GenericViewSet):
             return self.error_response(
                 errors="Plantilla no encontrada",
                 message="Recurso no encontrado",
-                code="not_found",
+                code="plantilla_not_found",
                 http_status=404
             )
         except Exception as e:
@@ -1411,7 +1383,7 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.GenericViewSet):
             return self.success_response(
                 data=None,
                 message="Plantilla removida de favoritos exitosamente",
-                code="favorite_removed",
+                code="plantilla_favorita_removed",
                 http_status=200
             )
                 
@@ -1460,7 +1432,7 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.GenericViewSet):
             return self.success_response(
                 data=plantillas_favoritas,
                 message="Plantillas favoritas obtenidas exitosamente",
-                code="favorites_retrieved",
+                code="plantilla_favorita_retrieved",
                 http_status=200
             )
                 
@@ -1468,7 +1440,7 @@ class PlantillaFavoritaViewSet(StandardResponseMixin, viewsets.GenericViewSet):
             return self.error_response(
                 errors=str(e),
                 message="Error al obtener favoritos",
-                code="favorites_error",
+                code="plantilla_favorita_error",
                 http_status=500
             )
 
@@ -1491,8 +1463,8 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             serializer_class=self.serializer_class,
             paginated_message="Plantillas compartidas obtenidas exitosamente (paginadas)",
             unpaginated_message="Plantillas compartidas obtenidas exitosamente",
-            code="shared_templates_retrieved",
-            error_code="shared_templates_error"
+            code="plantilla_compartida_retrieved",
+            error_code="plantilla_compartida_error"
         )
 
     def create(self, request, *args, **kwargs):
@@ -1500,9 +1472,9 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         return self.standard_create_response(
             request=request,
             success_message="Plantilla compartida exitosamente",
-            code="template_shared",
+            code="plantilla_compartida",
             error_message="Error al compartir plantilla",
-            error_code="template_share_error"
+            error_code="plantilla_compartida_error"
         )
 
     def retrieve(self, request, *args, **kwargs):
@@ -1513,12 +1485,12 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=serializer.data,
                 message="Plantilla compartida obtenida exitosamente",
-                code="shared_template_retrieved"
+                code="plantilla_compartida_retrieved"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener plantilla compartida: {str(e)}",
-                code="shared_template_retrieval_error"
+                code="plantilla_compartida_retrieval_error"
             )
 
     def update(self, request, *args, **kwargs):
@@ -1531,18 +1503,18 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 return self.success_response(
                     data=serializer.data,
                     message="Plantilla compartida actualizada exitosamente",
-                    code="shared_template_updated"
+                    code="plantilla_compartida_updated"
                 )
             else:
                 return self.error_response(
                     message="Datos inválidos para actualizar plantilla compartida",
-                    code="shared_template_update_error",
+                    code="plantilla_compartida_update_error",
                     errors=serializer.errors
                 )
         except Exception as e:
             return self.error_response(
                 message=f"Error al actualizar plantilla compartida: {str(e)}",
-                code="shared_template_update_error"
+                code="plantilla_compartida_update_error"
             )
 
     def partial_update(self, request, *args, **kwargs):
@@ -1555,18 +1527,18 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 return self.success_response(
                     data=serializer.data,
                     message="Plantilla compartida actualizada exitosamente",
-                    code="shared_template_updated"
+                    code="plantilla_compartida_updated"
                 )
             else:
                 return self.error_response(
                     message="Datos inválidos para actualizar plantilla compartida",
-                    code="shared_template_update_error",
+                    code="plantilla_compartida_update_error",
                     errors=serializer.errors
                 )
         except Exception as e:
             return self.error_response(
                 message=f"Error al actualizar plantilla compartida: {str(e)}",
-                code="shared_template_update_error"
+                code="plantilla_compartida_update_error"
             )
 
     def destroy(self, request, *args, **kwargs):
@@ -1576,12 +1548,12 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             instance.delete()
             return self.success_response(
                 message="Plantilla compartida eliminada exitosamente",
-                code="shared_template_deleted"
+                code="plantilla_compartida_deleted"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al eliminar plantilla compartida: {str(e)}",
-                code="shared_template_deletion_error"
+                code="plantilla_compartida_deletion_error"
             )
 
     @action(detail=False, methods=['get'])
@@ -1600,12 +1572,12 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=serializer.data,
                 message="Plantillas compartidas conmigo obtenidas exitosamente",
-                code="shared_with_me_retrieved"
+                code="compartida_conmigo_retrieved"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener plantillas compartidas conmigo: {str(e)}",
-                code="shared_with_me_error"
+                code="compartida_conmigo_error"
             )
 
     @action(detail=False, methods=['post'])
@@ -1644,12 +1616,12 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data={'compartidas': compartidas},
                 message="Plantilla compartida correctamente",
-                code="template_shared_successfully"
+                code="plantilla_compartida_successfully"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al compartir plantilla: {str(e)}",
-                code="template_share_error"
+                code="plantilla_compartida_error"
             )
 
     @action(detail=True, methods=['delete'])
@@ -1856,13 +1828,13 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 self.get_serializer_class(),
                 paginated_message="Listado paginado de plantillas generales obtenido correctamente",
                 unpaginated_message="Listado de plantillas generales obtenido correctamente",
-                code="general_templates_retrieved",
-                error_code="general_templates_list_error"
+                code="plantilla_general_retrieved",
+                error_code="plantilla_general_list_error"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener las plantillas generales: {str(e)}",
-                code="general_templates_list_error"
+                code="plantilla_general_list_error"
             )
 
     def create(self, request, *args, **kwargs):
@@ -1872,14 +1844,14 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 request,
                 self.get_serializer_class(),
                 success_message="Plantilla general creada correctamente",
-                success_code="general_template_created",
+                success_code="plantilla_general_created",
                 error_message="Error al crear la plantilla general",
-                error_code="general_template_creation_error"
+                error_code="plantilla_general_creation_error"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al crear la plantilla general: {str(e)}",
-                code="general_template_creation_error"
+                code="plantilla_general_creation_error"
             )
 
     def retrieve(self, request, *args, **kwargs):
@@ -1890,12 +1862,12 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=serializer.data,
                 message="Plantilla general obtenida correctamente",
-                code="general_template_retrieved"
+                code="plantilla_general_retrieved"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener la plantilla general: {str(e)}",
-                code="general_template_retrieval_error"
+                code="plantilla_general_retrieval_error"
             )
 
     def update(self, request, *args, **kwargs):
@@ -1908,17 +1880,17 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 return self.success_response(
                     data=serializer.data,
                     message="Plantilla general actualizada correctamente",
-                    code="general_template_updated"
+                    code="plantilla_general_updated"
                 )
             return self.error_response(
                 message="Datos inválidos para actualizar la plantilla",
-                code="general_template_update_validation_error",
+                code="plantilla_general_update_validation_error",
                 data=serializer.errors
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al actualizar la plantilla general: {str(e)}",
-                code="general_template_update_error"
+                code="plantilla_general_update_error"
             )
 
     def partial_update(self, request, *args, **kwargs):
@@ -1931,17 +1903,17 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 return self.success_response(
                     data=serializer.data,
                     message="Plantilla general actualizada correctamente",
-                    code="general_template_updated"
+                    code="plantilla_general_updated"
                 )
             return self.error_response(
                 message="Datos inválidos para actualizar la plantilla",
-                code="general_template_update_validation_error",
+                code="plantilla_general_update_validation_error",
                 data=serializer.errors
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al actualizar la plantilla general: {str(e)}",
-                code="general_template_update_error"
+                code="plantilla_general_update_error"
             )
 
     def destroy(self, request, *args, **kwargs):
@@ -1951,12 +1923,12 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             instance.delete()
             return self.success_response(
                 message="Plantilla general eliminada correctamente",
-                code="general_template_deleted"
+                code="plantilla_general_deleted"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al eliminar la plantilla general: {str(e)}",
-                code="general_template_deletion_error"
+                code="plantilla_general_deletion_error"
             )
 
     @action(detail=True, methods=['get'])
@@ -1968,12 +1940,12 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=data,
                 message="Plantillas por clasificación obtenidas correctamente",
-                code="templates_by_classification_retrieved"
+                code="plantilla_general_by_classification_retrieved"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener plantillas por clasificación: {str(e)}",
-                code="templates_by_classification_error"
+                code="plantilla_general_by_classification_error"
             )
 
     @action(detail=True, methods=['post'])
@@ -2014,12 +1986,12 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     'total_usuarios': len(usuarios_ids)
                 },
                 message=f"Plantilla compartida con {len(compartidas_creadas)} usuarios",
-                code="template_shared"
+                code="plantilla_general_shared"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al compartir plantilla: {str(e)}",
-                code="template_sharing_error"
+                code="plantilla_general_sharing_error"
             )
 
     @action(detail=True, methods=['get'])
@@ -2046,12 +2018,12 @@ class PlantillaGeneralViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             return self.success_response(
                 data=usuarios_data,
                 message="Usuarios con acceso obtenidos correctamente",
-                code="users_with_access_retrieved"
+                code="plantilla_general_usuarios_con_acceso_retrieved"
             )
         except Exception as e:
             return self.error_response(
                  message=f"Error al obtener usuarios con acceso: {str(e)}",
-                 code="users_with_access_error"
+                 code="plantilla_general_usuarios_con_acceso_error"
              )
 
 
@@ -2100,12 +2072,12 @@ class PlantillaGeneralCompartidaViewSet(StandardResponseMixin, viewsets.ModelVie
             return self.success_response(
                 data=serializer.data,
                 message="Plantillas compartidas obtenidas correctamente",
-                code="shared_templates_retrieved"
+                code="plantilla_general_compartida_retrieved"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener plantillas compartidas: {str(e)}",
-                code="shared_templates_error"
+                code="plantilla_general_compartida_error"
             )
 
     @action(detail=False, methods=['get'])
@@ -2125,12 +2097,12 @@ class PlantillaGeneralCompartidaViewSet(StandardResponseMixin, viewsets.ModelVie
             return self.success_response(
                 data=serializer.data,
                 message="Plantillas vigentes obtenidas correctamente",
-                code="valid_shared_templates_retrieved"
+                code="plantilla_general_compartida_vigente_retrieved"
             )
         except Exception as e:
             return self.error_response(
                 message=f"Error al obtener plantillas vigentes: {str(e)}",
-                code="valid_shared_templates_error"
+                code="plantilla_general_compartida_vigente_error"
             )
 
     @action(detail=True, methods=['delete'])
