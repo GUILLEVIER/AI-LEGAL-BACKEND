@@ -185,7 +185,6 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             # Preparar datos de respuesta
             data = {
                 'id': documento.id,
-                'texto_extraido': texto_extraido,
                 'html': texto_extraido,
                 'tipo': tipo,
                 'nombre_original': archivo.name,
