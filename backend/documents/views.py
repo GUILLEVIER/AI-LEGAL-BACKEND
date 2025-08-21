@@ -583,9 +583,35 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             )
     
     def destroy(self, request, *args, **kwargs):
-        """Eliminar documento subido con formato estándar"""
+        """Eliminar documento subido con formato estándar y control de permisos"""
         try:
             instance = self.get_object()
+            user = request.user
+            
+            # Verificar permisos para eliminar el documento
+            can_delete = False
+            
+            # Superuser o staff pueden eliminar cualquier documento
+            if user.is_superuser or user.is_staff:
+                can_delete = True
+            # Usuarios del grupo 'Admin' pueden eliminar documentos de su empresa
+            elif user.groups.filter(name='Admin').exists():
+                if user.empresa and instance.usuario.empresa == user.empresa:
+                    can_delete = True
+                elif not user.empresa and instance.usuario == user:
+                    can_delete = True
+            # Usuarios comunes solo pueden eliminar sus propios documentos
+            elif instance.usuario == user:
+                can_delete = True
+            
+            if not can_delete:
+                return self.error_response(
+                    errors="No tienes permisos para eliminar este documento",
+                    message="Acceso denegado",
+                    code="permission_denied",
+                    http_status=403
+                )
+            
             documento_nombre = instance.nombre_original  # Guardamos el nombre antes de eliminar
             
             # El método delete() del modelo se encarga de eliminar el archivo físico automáticamente
