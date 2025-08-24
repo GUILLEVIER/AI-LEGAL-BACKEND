@@ -594,13 +594,19 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     
     def _get_alignment_style(self, paragraph):
         """Obtiene el estilo de alineación del párrafo"""
-        alignment_map = {
-            WD_ALIGN_PARAGRAPH.CENTER: "text-align:center;",
-            WD_ALIGN_PARAGRAPH.RIGHT: "text-align:right;",
-            WD_ALIGN_PARAGRAPH.JUSTIFY: "text-align:justify;",
-            WD_ALIGN_PARAGRAPH.LEFT: "text-align:left;"
-        }
-        return alignment_map.get(paragraph.alignment, "")
+        try:
+            alignment_map = {
+                WD_ALIGN_PARAGRAPH.CENTER: "text-align:center;",
+                WD_ALIGN_PARAGRAPH.RIGHT: "text-align:right;",
+                WD_ALIGN_PARAGRAPH.JUSTIFY: "text-align:justify;",
+                WD_ALIGN_PARAGRAPH.LEFT: "text-align:left;"
+            }
+            return alignment_map.get(paragraph.alignment, "")
+        except Exception as e:
+            # Manejar casos donde el valor de alineación no tiene mapeo XML válido
+            # como 'start' que puede aparecer en algunos documentos DOCX
+            print(f"Warning: Alignment value not supported: {e}")
+            return ""
     
     def _get_indentation_styles(self, paragraph):
         """Obtiene los estilos de sangría del párrafo"""
