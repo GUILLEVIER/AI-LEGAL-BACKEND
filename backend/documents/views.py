@@ -165,7 +165,7 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 archivo.seek(0)
                 texto_extraido = archivo.read().decode('utf-8')
                 
-            print("texto extraido: ", texto_extraido)
+            #print("texto extraido: ", texto_extraido)
 
             # Verificar autenticación
             if not request.user.is_authenticated:
@@ -314,7 +314,7 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             </div>
             """
 
-            print(final_html)
+            #print(final_html)
             
             return final_html.strip()
             
@@ -487,7 +487,7 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         if in_list:
             html += "</ul>"
         
-        print("html de word: ", html)
+        #print("html de word: ", html)
         return html
     
     def _get_base_css_styles(self):
@@ -503,15 +503,33 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     
     def _process_table(self, table):
         """Procesa una tabla DOCX y retorna su representación HTML"""
-        table_html = "<table style='border-collapse:collapse;margin:10px 0;width:100%;'>"
+        table_html = "<table style='border-collapse:collapse;margin:10px 0;width:100%;border:1px solid #ccc;'>"
         
         for row in table.rows:
             table_html += "<tr>"
             for cell in row.cells:
-                # Procesar el primer párrafo de la celda (si existe)
-                first_paragraph = cell.paragraphs[0] if cell.paragraphs else None
-                cell_content = self._process_paragraph_runs(first_paragraph)
-                table_html += f"<td style='padding:5px;vertical-align:top;'>{cell_content}</td>"
+                # Procesar todos los párrafos de la celda
+                cell_content = ""
+                if cell.paragraphs:
+                    for i, paragraph in enumerate(cell.paragraphs):
+                        if paragraph.text.strip():  # Solo procesar párrafos con contenido
+                            # Obtener estilos del párrafo
+                            css_styles = self._get_paragraph_styles(paragraph)
+                            paragraph_content = self._process_paragraph_runs(paragraph)
+                            
+                            # Aplicar estilos si existen
+                            if css_styles:
+                                cell_content += f'<div style="{css_styles}">{paragraph_content}</div>'
+                            else:
+                                cell_content += f'<div>{paragraph_content}</div>'
+                        elif i == 0 and not cell_content:  # Celda vacía
+                            cell_content = "&nbsp;"
+                else:
+                    cell_content = "&nbsp;"  # Celda sin párrafos
+                
+                # Aplicar estilos de celda
+                cell_style = "padding:8px;vertical-align:top;border:1px solid #ddd;"
+                table_html += f"<td style='{cell_style}'>{cell_content}</td>"
             table_html += "</tr>"
         
         table_html += "</table>"
@@ -605,7 +623,7 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         except Exception as e:
             # Manejar casos donde el valor de alineación no tiene mapeo XML válido
             # como 'start' que puede aparecer en algunos documentos DOCX
-            print(f"Warning: Alignment value not supported: {e}")
+            #print(f"Warning: Alignment value not supported: {e}")
             return ""
     
     def _get_indentation_styles(self, paragraph):
@@ -646,7 +664,7 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         fmt = paragraph.paragraph_format
         if not fmt.line_spacing:
             return ""
-        print("TAMAÑO DE INTERLINEADO:", fmt.line_spacing)
+        #print("TAMAÑO DE INTERLINEADO:", fmt.line_spacing)
         if fmt.line_spacing_rule == 1:  # Múltiple
             return f"line-height:{fmt.line_spacing:.1f};"
         elif fmt.line_spacing_rule in [0, 2]:  # Exacto o Mínimo
@@ -1098,7 +1116,7 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         ).distinct()
     
     def list(self, request, *args, **kwargs):
-        print("list: ", request.user)
+        #print("list: ", request.user)
         """Listar plantillas con información de favoritos"""
         try:
             if not request.user.is_authenticated:
@@ -1290,7 +1308,6 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     code="plantilla_created"
                 )
             else:
-                print("Serializer errors:", serializer.errors)
                 return self.error_response(
                     message="Datos inválidos para crear plantilla",
                     code="plantilla_creation_error",
