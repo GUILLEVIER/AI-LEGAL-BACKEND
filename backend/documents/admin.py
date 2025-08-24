@@ -8,6 +8,7 @@ from .models import (
     DocumentoGenerado,
     PlantillaFavorita,
     TipoPlantillaDocumento,
+    CategoriaPlantillaDocumento,
     PlantillaCompartida,
     ClasificacionPlantillaGeneral,
     PlantillaGeneral,
@@ -37,6 +38,12 @@ class CampoDisponibleAdmin(ModelAdmin):
 class TipoPlantillaDocumentoAdmin(ModelAdmin):
     list_display = ('id', 'nombre')
     search_fields = ('nombre',)
+
+@admin.register(CategoriaPlantillaDocumento)
+class CategoriaPlantillaDocumentoAdmin(ModelAdmin):
+    list_display = ('id', 'nombre')
+    search_fields = ('nombre',)
+
 
 @admin.register(PlantillaDocumento)
 class PlantillaDocumentoAdmin(ModelAdmin):

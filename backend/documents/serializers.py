@@ -6,6 +6,7 @@ from .models import (
     CampoPlantilla, 
     DocumentoGenerado,
     TipoPlantillaDocumento,
+    CategoriaPlantillaDocumento,
     PlantillaCompartida,
     PlantillaFavorita,
     ClasificacionPlantillaGeneral,
@@ -30,6 +31,34 @@ class TipoPlantillaDocumentoSerializer(serializers.ModelSerializer):
         model = TipoPlantillaDocumento
         fields = '__all__'
 
+class CategoriaPlantillaDocumentoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategoriaPlantillaDocumento
+        fields = '__all__'
+
+class ClasificacionPlantillaGeneralSerializer(serializers.ModelSerializer):
+    total_paquetes = serializers.SerializerMethodField()
+    paquetes_activos = serializers.SerializerMethodField()
+    total_plantillas_en_categoria = serializers.SerializerMethodField()
+    creado_por_nombre = serializers.CharField(source='creado_por.get_full_name', read_only=True)
+    
+    class Meta:
+        model = ClasificacionPlantillaGeneral
+        fields = '__all__'
+        read_only_fields = ('id', 'fecha_creacion', 'fecha_actualizacion')
+    
+    def get_total_paquetes(self, obj):
+        """Retorna el total de paquetes en esta categoría"""
+        return obj.get_paquetes_count()
+    
+    def get_paquetes_activos(self, obj):
+        """Retorna el número de paquetes activos en esta categoría"""
+        return obj.get_paquetes_activos().count()
+    
+    def get_total_plantillas_en_categoria(self, obj):
+        """Retorna el total de plantillas en todos los paquetes de esta categoría"""
+        return obj.get_total_plantillas_en_categoria()
+
 class CampoPlantillaSerializer(serializers.ModelSerializer):
     campo_nombre = serializers.CharField(source='campo.nombre', read_only=True)
     campo_tipo = serializers.CharField(source='campo.tipo_dato', read_only=True)
@@ -41,6 +70,8 @@ class CampoPlantillaSerializer(serializers.ModelSerializer):
 class PlantillaDocumentoSerializer(serializers.ModelSerializer):
     campos_asociados = CampoPlantillaSerializer(many=True, read_only=True)
     tipo = TipoPlantillaDocumentoSerializer(read_only=True)
+    clasificacion = ClasificacionPlantillaGeneralSerializer(read_only=True)
+    categoria = CategoriaPlantillaDocumentoSerializer(read_only=True)
     tipo_info = serializers.SerializerMethodField()
     
     class Meta:
@@ -70,6 +101,8 @@ class CrearPlantillaSerializer(serializers.Serializer):
     descripcion = serializers.CharField(required=False, allow_blank=True)
     html_con_campos = serializers.CharField(required=False, allow_blank=True)
     tipo_id = serializers.IntegerField(required=False, allow_null=True)
+    clasificacion_id = serializers.IntegerField(required=False, allow_null=True)
+    categoria_id = serializers.IntegerField(required=False, allow_null=True)
     campos = serializers.ListField(
         child=serializers.DictField(),
         required=False
@@ -93,29 +126,6 @@ class PlantillaFavoritaSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlantillaFavorita
         fields = '__all__'
-
-class ClasificacionPlantillaGeneralSerializer(serializers.ModelSerializer):
-    total_paquetes = serializers.SerializerMethodField()
-    paquetes_activos = serializers.SerializerMethodField()
-    total_plantillas_en_categoria = serializers.SerializerMethodField()
-    creado_por_nombre = serializers.CharField(source='creado_por.get_full_name', read_only=True)
-    
-    class Meta:
-        model = ClasificacionPlantillaGeneral
-        fields = '__all__'
-        read_only_fields = ('id', 'fecha_creacion', 'fecha_actualizacion')
-    
-    def get_total_paquetes(self, obj):
-        """Retorna el total de paquetes en esta categoría"""
-        return obj.get_paquetes_count()
-    
-    def get_paquetes_activos(self, obj):
-        """Retorna el número de paquetes activos en esta categoría"""
-        return obj.get_paquetes_activos().count()
-    
-    def get_total_plantillas_en_categoria(self, obj):
-        """Retorna el total de plantillas en todos los paquetes de esta categoría"""
-        return obj.get_total_plantillas_en_categoria()
 
 class PlantillaGeneralSerializer(serializers.ModelSerializer):
     clasificacion = ClasificacionPlantillaGeneralSerializer(read_only=True)

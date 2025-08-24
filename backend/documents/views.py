@@ -33,6 +33,7 @@ from .models import (
     DocumentoGenerado,
     PlantillaFavorita,
     TipoPlantillaDocumento,
+    CategoriaPlantillaDocumento,
     PlantillaCompartida,
     ClasificacionPlantillaGeneral,
     PlantillaGeneral,
@@ -46,6 +47,7 @@ from .serializers import (
     CrearPlantillaSerializer,
     GenerarDocumentoSerializer,
     TipoPlantillaDocumentoSerializer,
+    CategoriaPlantillaDocumentoSerializer,
     PlantillaCompartidaSerializer,
     PlantillaFavoritaSerializer,
     ClasificacionPlantillaGeneralSerializer,
@@ -162,7 +164,8 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             else:
                 archivo.seek(0)
                 texto_extraido = archivo.read().decode('utf-8')
-                print(texto_extraido)
+                
+            print("texto extraido: ", texto_extraido)
 
             # Verificar autenticación
             if not request.user.is_authenticated:
@@ -470,53 +473,257 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             
 
     def _extraer_texto_docx(self, doc):
-        html = ""
+        """Extrae texto de un documento DOCX y lo convierte a HTML manteniendo el formato"""
+        html = self._get_base_css_styles()
         in_list = False
-        for block in iter_block_items(doc):
+        
+        for block in self._iter_block_items(doc):
             if isinstance(block, Table):
-                html += "<table border='1' style='border-collapse:collapse;margin:10px 0;'>"
-                for row in block.rows:
-                    html += "<tr>"
-                    for cell in row.cells:
-                        html += f"<td>{cell.text}</td>"
-                    html += "</tr>"
-                html += "</table>"
+                html += self._process_table(block)
             elif isinstance(block, docx.text.paragraph.Paragraph):
-                p = block
-                style = p.style.name.lower()
-                text = p.text.replace(" ", "&nbsp;")
-                align = ""
-                if p.alignment == WD_ALIGN_PARAGRAPH.CENTER:
-                    align = "text-align:center;"
-                elif p.alignment == WD_ALIGN_PARAGRAPH.RIGHT:
-                    align = "text-align:right;"
-                elif p.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY:
-                    align = "text-align:justify;"
-                indent = ""
-                if p.paragraph_format.first_line_indent:
-                    indent += f"text-indent:{int(p.paragraph_format.first_line_indent.pt)}pt;"
-                if p.paragraph_format.left_indent:
-                    indent += f"margin-left:{int(p.paragraph_format.left_indent.pt)}pt;"
-                style_attr = f'style="{align}{indent}"' if (align or indent) else ""
-                # Detectar listas
-                if is_list_paragraph(p):
-                    if not in_list:
-                        html += "<ul>"
-                        in_list = True
-                    html += f"<li {style_attr}>{text}</li>"
-                else:
-                    if in_list:
-                        html += "</ul>"
-                        in_list = False
-                    if style.startswith("heading"):
-                        html += f"<h2 {style_attr}>{text}</h2>"
-                    else:
-                        html += f"<p {style_attr}>{text}</p>"
+                paragraph_html, in_list = self._process_paragraph(block, in_list)
+                html += paragraph_html
+        
         if in_list:
             html += "</ul>"
-        html += ""
+        
+        print("html de word: ", html)
         return html
-        #return HttpResponse(f"<pre>\n{html}\n</pre>", status=status.HTTP_200_OK)
+    
+    def _get_base_css_styles(self):
+        """Retorna los estilos CSS base para el documento HTML generado"""
+        return (
+            "<style>"
+            "body{font-family:Arial,sans-serif;margin:0;padding:20px;line-height:1.2;}"
+            "p{margin:0;padding:0;}"
+            "table{border-collapse:collapse;}"
+            "td{vertical-align:top;}"
+            "</style>"
+        )
+    
+    def _process_table(self, table):
+        """Procesa una tabla DOCX y retorna su representación HTML"""
+        table_html = "<table style='border-collapse:collapse;margin:10px 0;width:100%;'>"
+        
+        for row in table.rows:
+            table_html += "<tr>"
+            for cell in row.cells:
+                # Procesar el primer párrafo de la celda (si existe)
+                first_paragraph = cell.paragraphs[0] if cell.paragraphs else None
+                cell_content = self._process_paragraph_runs(first_paragraph)
+                table_html += f"<td style='padding:5px;vertical-align:top;'>{cell_content}</td>"
+            table_html += "</tr>"
+        
+        table_html += "</table>"
+        return table_html
+    
+    def _process_paragraph(self, paragraph, is_currently_in_list):
+        """Procesa un párrafo DOCX y retorna su HTML junto con el estado actualizado de lista"""
+        paragraph_style = paragraph.style.name.lower()
+        formatted_content = self._process_paragraph_runs(paragraph)
+        
+        # Obtener todos los estilos CSS del párrafo
+        css_styles = self._get_paragraph_styles(paragraph)
+        style_attribute = f'style="{css_styles}"' if css_styles else ""
+        
+        # Determinar si es un elemento de lista
+        if self._is_list_paragraph(paragraph):
+            paragraph_html, updated_list_state = self._handle_list_paragraph(
+                formatted_content, style_attribute, is_currently_in_list
+            )
+        else:
+            paragraph_html, updated_list_state = self._handle_regular_paragraph(
+                formatted_content, style_attribute, paragraph_style, is_currently_in_list
+            )
+        
+        return paragraph_html, updated_list_state
+    
+    def _handle_list_paragraph(self, content, style_attr, in_list):
+        """Maneja párrafos que son elementos de lista"""
+        html_output = ""
+        
+        if not in_list:
+            html_output = "<ul style='margin:0;padding-left:20px;'>"
+            in_list = True
+        
+        html_output += f"<li {style_attr}>{content}</li>"
+        return html_output, in_list
+    
+    def _handle_regular_paragraph(self, content, style_attr, paragraph_style, in_list):
+        """Maneja párrafos regulares (no de lista)"""
+        html_output = ""
+        
+        # Cerrar lista si estábamos en una
+        if in_list:
+            html_output += "</ul>"
+            in_list = False
+        
+        # Determinar el tipo de elemento HTML según el estilo
+        if paragraph_style.startswith("heading"):
+            html_output += f"<h2 {style_attr}>{content}</h2>"
+        else:
+            html_output += f"<p {style_attr}>{content}</p>"
+        
+        return html_output, in_list
+    
+    def _get_paragraph_styles(self, paragraph):
+        """Extrae y combina todos los estilos de un párrafo"""
+        styles = []
+
+        # Alineación
+        alignment = self._get_alignment_style(paragraph)
+        if alignment:
+            styles.append(alignment)
+        
+        # Sangrías
+        indentation = self._get_indentation_styles(paragraph)
+        if indentation:
+            styles.append(indentation)
+        
+        # Espaciado
+        spacing = self._get_spacing_styles(paragraph)
+        if spacing:
+            styles.append(spacing)
+        
+        # Interlineado
+        line_spacing = self._get_line_spacing_style(paragraph)
+        if line_spacing:
+            styles.append(line_spacing)
+        
+        return "".join(styles)
+    
+    def _get_alignment_style(self, paragraph):
+        """Obtiene el estilo de alineación del párrafo"""
+        alignment_map = {
+            WD_ALIGN_PARAGRAPH.CENTER: "text-align:center;",
+            WD_ALIGN_PARAGRAPH.RIGHT: "text-align:right;",
+            WD_ALIGN_PARAGRAPH.JUSTIFY: "text-align:justify;",
+            WD_ALIGN_PARAGRAPH.LEFT: "text-align:left;"
+        }
+        return alignment_map.get(paragraph.alignment, "")
+    
+    def _get_indentation_styles(self, paragraph):
+        """Obtiene los estilos de sangría del párrafo"""
+        styles = []
+        fmt = paragraph.paragraph_format
+        
+        # Sangría de primera línea
+        if fmt.first_line_indent and fmt.first_line_indent.pt != 0:
+            styles.append(f"text-indent:{fmt.first_line_indent.pt:.1f}pt;")
+        
+        # Sangría izquierda
+        if fmt.left_indent and fmt.left_indent.pt != 0:
+            styles.append(f"margin-left:{fmt.left_indent.pt:.1f}pt;")
+        
+        # Sangría derecha
+        if fmt.right_indent and fmt.right_indent.pt != 0:
+            styles.append(f"margin-right:{fmt.right_indent.pt:.1f}pt;")
+        
+        return "".join(styles)
+    
+    def _get_spacing_styles(self, paragraph):
+        """Obtiene los estilos de espaciado del párrafo"""
+        styles = []
+        fmt = paragraph.paragraph_format
+        
+        if fmt.space_before and fmt.space_before.pt > 0:
+            styles.append(f"margin-top:{fmt.space_before.pt:.1f}pt;")
+        
+        if fmt.space_after and fmt.space_after.pt > 0:
+            styles.append(f"margin-bottom:{fmt.space_after.pt:.1f}pt;")
+        
+        return "".join(styles)
+    
+    def _get_line_spacing_style(self, paragraph):
+        """Obtiene el estilo de interlineado del párrafo"""
+
+        fmt = paragraph.paragraph_format
+        if not fmt.line_spacing:
+            return ""
+        print("TAMAÑO DE INTERLINEADO:", fmt.line_spacing)
+        if fmt.line_spacing_rule == 1:  # Múltiple
+            return f"line-height:{fmt.line_spacing:.1f};"
+        elif fmt.line_spacing_rule in [0, 2]:  # Exacto o Mínimo
+            return f"line-height:{fmt.line_spacing.pt:.1f}pt;"
+        
+        return ""
+    
+    def _process_paragraph_runs(self, paragraph):
+        """Procesa los runs de un párrafo para mantener el formato de negrita y otros estilos"""
+        if not paragraph:
+            return ""
+        
+        formatted_text = ""
+        for run in paragraph.runs:
+            text = self._process_run_text(run)
+            formatted_text += text
+        
+        return formatted_text
+    
+    def _process_run_text(self, run):
+        """Procesa un run individual aplicando todos los formatos necesarios"""
+        text = run.text
+        
+        # Preservar espacios múltiples
+        text = self._preserve_multiple_spaces(text)
+        
+        # Aplicar formatos de texto
+        text = self._apply_text_formatting(run, text)
+        
+        # Aplicar estilos de fuente
+        text = self._apply_font_styles(run, text)
+        
+        return text
+    
+    def _preserve_multiple_spaces(self, text):
+        """Convierte espacios múltiples consecutivos a entidades HTML"""
+        import re
+        return re.sub(r'  +', lambda m: '&nbsp;' * len(m.group()), text)
+    
+    def _apply_text_formatting(self, run, text):
+        """Aplica formato de texto básico (negrita, cursiva, subrayado)"""
+        if run.bold:
+            text = f"<strong>{text}</strong>"
+        
+        if run.italic:
+            text = f"<em>{text}</em>"
+        
+        if run.underline:
+            text = f"<u>{text}</u>"
+        
+        return text
+    
+    def _apply_font_styles(self, run, text):
+        """Aplica estilos de fuente (color y tamaño)"""
+        # Aplicar color de fuente
+        if hasattr(run.font, 'color') and run.font.color.rgb:
+            color = run.font.color.rgb
+            hex_color = f"#{color.red:02x}{color.green:02x}{color.blue:02x}"
+            text = f"<span style='color:{hex_color};'>{text}</span>"
+        
+        # Aplicar tamaño de fuente
+        if hasattr(run.font, 'size') and run.font.size:
+            font_size_pt = run.font.size.pt
+            text = f"<span style='font-size:{font_size_pt:.1f}pt;'>{text}</span>"
+        
+        return text
+
+    def _iter_block_items(self, parent):
+        for child in parent.element.body.iterchildren():
+            if isinstance(child, CT_P):
+                yield Paragraph(child, parent)
+            elif isinstance(child, CT_Tbl):
+                yield Table(child, parent)
+
+    def _is_list_paragraph(self, paragraph):
+        # Detecta si el párrafo es una lista por el estilo o por el XML
+        style = paragraph.style.name.lower()
+        if "list" in style or "bullet" in style:
+            return True
+        # XML: busca el elemento numPr
+        if paragraph._element.xpath('.//w:numPr'):
+            return True
+        return False
 
     def retrieve(self, request, *args, **kwargs):
         """Obtener documento subido específico con formato estándar"""
@@ -854,6 +1061,22 @@ class TipoPlantillaDocumentoListAPIView(StandardResponseMixin, generics.ListAPIV
             error_code="tipo_plantilla_error"
         )
 
+class CategoriaPlantillaDocumentoListAPIView(StandardResponseMixin, generics.ListAPIView):
+    queryset = CategoriaPlantillaDocumento.objects.all()
+    serializer_class = CategoriaPlantillaDocumentoSerializer
+
+    def list(self, request, *args, **kwargs):
+        """Listar categorias de plantilla de documento con formato estándar"""
+        return self.paginated_list_response(
+            request=request,
+            queryset=self.get_queryset(),
+            serializer_class=self.serializer_class,
+            paginated_message="Categorias de plantilla de documento obtenidos exitosamente (paginados)",
+            unpaginated_message="Categorias de plantilla de documento obtenidos exitosamente",
+            code="categoria_plantilla_retrieved",
+            error_code="categoria_plantilla_error"
+        )
+
 class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     queryset = PlantillaDocumento.objects.none()
     serializer_class = PlantillaDocumentoSerializer
@@ -1009,6 +1232,22 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                         tipo = TipoPlantillaDocumento.objects.get(id=serializer.validated_data['tipo_id'])
                     except TipoPlantillaDocumento.DoesNotExist:
                         pass
+                
+                # Obtener la categoría si se proporciona
+                categoria = None
+                if 'categoria_id' in serializer.validated_data and serializer.validated_data['categoria_id']:
+                    try:
+                        categoria = CategoriaPlantillaDocumento.objects.get(id=serializer.validated_data['categoria_id'])
+                    except CategoriaPlantillaDocumento.DoesNotExist:
+                        pass
+
+                # Obtener la clasificación si se proporciona
+                clasificacion = None
+                if 'clasificacion_id' in serializer.validated_data and serializer.validated_data['clasificacion_id']:
+                    try:
+                        clasificacion = ClasificacionPlantillaGeneral.objects.get(id=serializer.validated_data['clasificacion_id'])
+                    except ClasificacionPlantillaGeneral.DoesNotExist:
+                        pass
 
                 # Verificar autenticación
                 if not request.user.is_authenticated:
@@ -1018,13 +1257,15 @@ class PlantillaDocumentoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                         code="authentication_required",
                         http_status=401
                     )
-                
+
                 # Crear plantilla
                 plantilla = PlantillaDocumento.objects.create(
                     nombre=serializer.validated_data['nombre'],
                     descripcion=serializer.validated_data.get('descripcion', ''),
                     html_con_campos=serializer.validated_data.get('html_con_campos', ''),
                     tipo=tipo,
+                    categoria=categoria,
+                    clasificacion=clasificacion,
                     usuario=request.user
                 )
 
@@ -2176,197 +2417,6 @@ class PlantillaGeneralCompartidaViewSet(StandardResponseMixin, viewsets.ModelVie
             )
 
 
-class ConvertDocxToHtmlView(StandardResponseMixin, APIView):
-    parser_classes = [MultiPartParser]
-
-    def post(self, request):
-        serializer = FileUploadSerializer(data=request.data)
-        if serializer.is_valid():
-            uploaded_file = serializer.validated_data['file']
-            if not uploaded_file.name.endswith('.docx'):
-                return self.error_response("Solo se permiten archivos .docx")
-            try:
-                # Read the uploaded file
-                doc = docx.Document(uploaded_file.file)
-                html = ""
-                in_list = False
-                for block in iter_block_items(doc):
-                    if isinstance(block, Table):
-                        html += "<table border='1' style='border-collapse:collapse;margin:10px 0;'>"
-                        for row in block.rows:
-                            html += "<tr>"
-                            for cell in row.cells:
-                                html += f"<td>{cell.text}</td>"
-                            html += "</tr>"
-                        html += "</table>"
-                    elif isinstance(block, docx.text.paragraph.Paragraph):
-                        p = block
-                        style = p.style.name.lower()
-                        text = p.text.replace(" ", "&nbsp;")
-                        align = ""
-                        if p.alignment == WD_ALIGN_PARAGRAPH.CENTER:
-                            align = "text-align:center;"
-                        elif p.alignment == WD_ALIGN_PARAGRAPH.RIGHT:
-                            align = "text-align:right;"
-                        elif p.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY:
-                            align = "text-align:justify;"
-                        indent = ""
-                        if p.paragraph_format.first_line_indent:
-                            indent += f"text-indent:{int(p.paragraph_format.first_line_indent.pt)}pt;"
-                        if p.paragraph_format.left_indent:
-                            indent += f"margin-left:{int(p.paragraph_format.left_indent.pt)}pt;"
-                        style_attr = f'style="{align}{indent}"' if (align or indent) else ""
-                        # Detectar listas
-                        if is_list_paragraph(p):
-                            if not in_list:
-                                html += "<ul>"
-                                in_list = True
-                            html += f"<li {style_attr}>{text}</li>"
-                        else:
-                            if in_list:
-                                html += "</ul>"
-                                in_list = False
-                            if style.startswith("heading"):
-                                html += f"<h2 {style_attr}>{text}</h2>"
-                            else:
-                                html += f"<p {style_attr}>{text}</p>"
-                if in_list:
-                    html += "</ul>"
-                html += ""
-                return self.success_response(data=html, message="Operación realizada con éxito", code="success", http_status=200)
-            except Exception as e:
-                return self.error_response(f"Error en la conversión: {str(e)}")
-        else:
-            return self.error_response(serializer.errors)
-
-class ConvertImageToHtmlView(StandardResponseMixin, APIView):
-    parser_classes = [MultiPartParser]
-
-    def post(self, request):
-        serializer = FileUploadSerializer(data=request.data)
-        if serializer.is_valid():
-            uploaded_file = serializer.validated_data['file']
-            if not uploaded_file.name.endswith('.png'):
-                return self.error_response("Solo se permiten archivos .png")
-            try:
-                # Read the uploaded file
-                image_bytes = uploaded_file.read()
-                img = Image.open(io.BytesIO(image_bytes))
-
-                # Usar pytesseract para obtener datos de cada palabra
-                ocr_data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
-                n = len(ocr_data['level'])
-                lines = {}
-                for i in range(n):
-                    if int(ocr_data['conf'][i]) > 0 and ocr_data['text'][i].strip():
-                        # Agrupar por número de línea y número de bloque para mayor fidelidad
-                        block_num = ocr_data['block_num'][i]
-                        par_num = ocr_data['par_num'][i]
-                        line_num = ocr_data['line_num'][i]
-                        key = (block_num, par_num, line_num)
-                        if key not in lines:
-                            lines[key] = []
-                        lines[key].append({
-                            'text': ocr_data['text'][i],
-                            'left': ocr_data['left'][i],
-                            'top': ocr_data['top'][i],
-                            'width': ocr_data['width'][i]
-                        })
-                html = ""
-                for key in sorted(lines.keys(), key=lambda k: (k[0], k[1], k[2])):
-                    line = lines[key]
-                    if not line:
-                        continue
-                    # Ordenar palabras por posición horizontal
-                    line.sort(key=lambda w: w['left'])
-                    # Espacios desde el margen izquierdo hasta la primera palabra
-                    first_word = line[0]
-                    n_spaces = int(first_word['left'] // 10)  # Ajusta el divisor según el resultado visual
-                    line_text = " " * n_spaces
-                    prev_right = first_word['left'] + first_word['width']
-                    line_text += first_word['text']
-                    for word in line[1:]:
-                        # Calcular espacios entre palabras según la distancia X
-                        gap = word['left'] - prev_right
-                        if gap > 10:
-                            spaces_between = int(gap // 10)
-                            line_text += " " * max(1, spaces_between)
-                        else:
-                            line_text += " "
-                        line_text += word['text']
-                        prev_right = word['left'] + word['width']
-                    html += line_text + "\n"
-                return self.success_response(data=html, message="Operación realizada con éxito", code="success", http_status=200)
-            except Exception as e:
-                return self.error_response(f"Error en la conversión: {str(e)}")
-        else:
-            return self.error_response(serializer.errors)
-
-class ConvertPdfToHtmlView(StandardResponseMixin, APIView):
-    parser_classes = [MultiPartParser]
-
-    def post(self, request):
-        serializer = FileUploadSerializer(data=request.data)
-        if serializer.is_valid():
-            uploaded_file = serializer.validated_data['file']
-            if not uploaded_file.name.endswith('.pdf'):
-                return self.error_response("Solo se permiten archivos .pdf")
-            try:
-                # Read the uploaded file
-                pdf_bytes = uploaded_file.read()
-                pdf_buffer = io.BytesIO(pdf_bytes)
-                pdf = pdfplumber.open(pdf_buffer)
-                html = ""
-                for page in pdf.pages:
-                    words = page.extract_words()
-                    # Agrupa palabras por línea (top)
-                    lines = {}
-                    for word in words:
-                        line_key = round(word['top'])
-                        if line_key not in lines:
-                            lines[line_key] = []
-                        lines[line_key].append(word)
-                    for line_words in lines.values():
-                        line_words.sort(key=lambda w: w['x0'])
-                        prev_x1 = None
-                        line = ""
-                        for idx, word in enumerate(line_words):
-                            if idx == 0:
-                                # Primera palabra de la línea
-                                n_dollars = int(word['x0'] // 5)  # Ajusta el divisor según el resultado visual
-                                line += "&nbsp;" * n_dollars
-                            else:
-                                gap = word['x0'] - prev_x1
-                                if gap > 5:
-                                    n_spaces = int(gap // 3)
-                                    line += " " * max(1, n_spaces)
-                                else:
-                                    line += " "
-                            line += word['text']
-                            prev_x1 = word['x1']
-                        html += line + "\n"
-                return self.success_response(data=html, message="Operación realizada con éxito", code="success", http_status=200)
-            except Exception as e:
-                return self.error_response(f"Error en la conversión: {str(e)}")
-        else:
-            return self.error_response(serializer.errors)
-
-def iter_block_items(parent):
-    for child in parent.element.body.iterchildren():
-        if isinstance(child, CT_P):
-            yield Paragraph(child, parent)
-        elif isinstance(child, CT_Tbl):
-            yield Table(child, parent)
-
-def is_list_paragraph(paragraph):
-    # Detecta si el párrafo es una lista por el estilo o por el XML
-    style = paragraph.style.name.lower()
-    if "list" in style or "bullet" in style:
-        return True
-    # XML: busca el elemento numPr
-    if paragraph._element.xpath('.//w:numPr'):
-        return True
-    return False
 
 class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     """ViewSet para listar usuarios (excluyendo al usuario actual)"""
