@@ -130,12 +130,33 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
             nombre_archivo = archivo.name.lower()
             if nombre_archivo.endswith('.pdf'):
                 tipo = 'pdf'
+                #ESTO ES PARA PRUEBA REUNION DEL 22
+                return self.error_response(
+                    errors="Solo se permiten archivos docx",
+                    message="Archivo requerido",
+                    code="missing_file",
+                    http_status=400
+                )
             elif nombre_archivo.endswith(('.jpg', '.jpeg', '.png', '.gif')):
                 tipo = 'imagen'
+                #ESTO ES PARA PRUEBA REUNION DEL 22
+                return self.error_response(
+                    errors="Solo se permiten archivos docx",
+                    message="Archivo requerido",
+                    code="missing_file",
+                    http_status=400
+                )
             elif nombre_archivo.endswith('.docx'):
                 tipo = 'word'
             else:
                 tipo = 'texto'
+                #ESTO ES PARA PRUEBA REUNION DEL 22
+                return self.error_response(
+                    errors="Solo se permiten archivos docx",
+                    message="Archivo requerido",
+                    code="missing_file",
+                    http_status=400
+                )
             
             if request.user.is_staff or request.user.is_superuser:
                 # Administradores y staff guardan en carpeta admin
@@ -148,7 +169,8 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                     # Fallback si el usuario no tiene empresa asignada
                     ruta_archivo = f'documentos/sin_empresa/{request.user.username}/{archivo.name}'
 
-            ruta_completa = default_storage.save(ruta_archivo, ContentFile(archivo.read()))
+            #ESTO ES PARA PRUEBA REUNION DEL 22
+            #ruta_completa = default_storage.save(ruta_archivo, ContentFile(archivo.read()))
 
             # Extraer texto según el tipo
             texto_extraido = ""
@@ -177,22 +199,23 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 )
             
             # Crear registro en base de datos
-            documento = DocumentoSubido.objects.create(
+            # COMENTAR PARA QUE NO GUARDE EL REGISTRO SEGUN REUNION DEL 22
+            '''documento = DocumentoSubido.objects.create(
                 usuario=request.user,
                 nombre_original=archivo.name,
                 tipo=tipo,
-                archivo_url=ruta_completa,
+                archivo_url='', #ruta_completa
                 html=texto_extraido
-            )
+            )'''
 
             # Preparar datos de respuesta
             data = {
-                'id': documento.id,
+                'id': '', #documento.id
                 'html': texto_extraido,
                 'tipo': tipo,
                 'nombre_original': archivo.name,
-                'archivo_url': ruta_completa,
-                'fecha_subida': documento.fecha_subida
+                'archivo_url': '', #ruta_completa
+                'fecha_subida': '' #documento.fecha_subida
             }
 
             return self.success_response(
@@ -487,7 +510,7 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
         if in_list:
             html += "</ul>"
         
-        #print("html de word: ", html)
+        print("html de word: ", html)
         return html
     
     def _get_base_css_styles(self):

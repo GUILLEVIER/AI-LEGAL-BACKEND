@@ -143,6 +143,12 @@ UNFOLD = {
                         "link": reverse_lazy("admin:auth_group_changelist"),
                         "permission": lambda request: request.user.is_superuser,
                     },
+                    {
+                        "title": _("Perfiles"),
+                        "icon": "manage_accounts",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:users_perfil_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
                     
                 ],
             },
