@@ -1978,6 +1978,13 @@ class PlantillaCompartidaViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     def usuarios_compartidos(self, request):
         """Obtener usuarios con los que se ha compartido una plantilla con formato estándar"""
         try:
+            # Verificar que solo usuarios superadmin y staff puedan acceder
+            if not (request.user.is_superuser or request.user.is_staff):
+                return self.error_response(
+                    message="No tienes permisos para acceder a esta funcionalidad",
+                    code="permission_denied"
+                )
+            
             plantilla_id = request.query_params.get('plantilla_id')
             if not plantilla_id:
                 return self.error_response(
@@ -2464,7 +2471,7 @@ class PlantillaGeneralCompartidaViewSet(StandardResponseMixin, viewsets.ModelVie
 
 
 
-class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
+class UsuariosViewSet(StandardResponseMixin, viewsets.ReadOnlyModelViewSet):
     """ViewSet para listar usuarios (excluyendo al usuario actual)"""
     queryset = Usuarios.objects.none()
     serializer_class = UsuariosSerializer
