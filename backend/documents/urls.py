@@ -27,7 +27,7 @@ router.register(r'plantillas-compartidas', PlantillaCompartidaViewSet)
 #router.register(r'clasificacion-plantillas-generales', ClasificacionPlantillaGeneralViewSet)
 router.register(r'plantilla-generales', PlantillaGeneralViewSet)
 router.register(r'plantillas-generales-compartidas', PlantillaGeneralCompartidaViewSet)
-#router.register(r'usuarios', UsuariosViewSet)
+router.register(r'usuarios', UsuariosViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
