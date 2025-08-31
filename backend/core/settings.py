@@ -143,6 +143,12 @@ UNFOLD = {
                         "link": reverse_lazy("admin:auth_group_changelist"),
                         "permission": lambda request: request.user.is_superuser,
                     },
+                    {
+                        "title": _("Perfiles"),
+                        "icon": "manage_accounts",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:users_perfil_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
                     
                 ],
             },
@@ -196,6 +202,18 @@ UNFOLD = {
                         "permission": lambda request: request.user.is_superuser,
                     },
                     {
+                        "title": _("Categoria PlantillaDocumento"),
+                        "icon": "type_specimen",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_categoriaplantilladocumento_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
+                        "title": _("Clasificacion Plantilla General"),
+                        "icon": "category",  # Supported icon set: https://fonts.google.com/icons
+                        "link": reverse_lazy("admin:documents_clasificacionplantillageneral_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
                         "title": _("Plantilla Documento"),
                         "icon": "document_scanner",  # Supported icon set: https://fonts.google.com/icons
                         "link": reverse_lazy("admin:documents_plantilladocumento_changelist"),
@@ -223,12 +241,6 @@ UNFOLD = {
                         "title": _("Plantilla Compartida"),
                         "icon": "handshake",  # Supported icon set: https://fonts.google.com/icons
                         "link": reverse_lazy("admin:documents_plantillacompartida_changelist"),
-                        "permission": lambda request: request.user.is_superuser,
-                    },
-                    {
-                        "title": _("Clasificacion Plantilla General"),
-                        "icon": "category",  # Supported icon set: https://fonts.google.com/icons
-                        "link": reverse_lazy("admin:documents_clasificacionplantillageneral_changelist"),
                         "permission": lambda request: request.user.is_superuser,
                     },
                     {

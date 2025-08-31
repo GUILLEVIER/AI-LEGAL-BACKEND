@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
 from dj_rest_auth.serializers import PasswordChangeSerializer
-from .models import Usuarios
+from .models import Usuarios, Perfil
 from companies.serializers import EmpresasSerializer
 
 class UsuariosSerializer(serializers.ModelSerializer):
@@ -229,3 +229,74 @@ class UserPermissionsSerializer(serializers.ModelSerializer):
                     existing['sources'].append({'type': perm['source'], 'name': perm['source_name']})
         
         return list(unique_permissions.values())
+
+
+class PerfilSerializer(serializers.ModelSerializer):
+    """Serializer para el modelo Perfil"""
+    usuario = serializers.PrimaryKeyRelatedField(queryset=Usuarios.objects.all())
+    usuario_info = UsuariosSerializer(source='usuario', read_only=True)
+    
+    class Meta:
+        model = Perfil
+        fields = (
+            'id', 'usuario', 'usuario_info', 'descargar', 'interlineado', 
+            'footer', 'abogado_uno', 'abogado_dos', 'rut_uno', 'rut_dos',
+            'representante_banco', 'rut_representante', 'banco'
+        )
+        read_only_fields = ('id',)
+    
+    def validate_interlineado(self, value):
+        """Validar que el interlineado esté en un rango válido"""
+        if value < 0.5 or value > 3.0:
+            raise serializers.ValidationError(
+                "El interlineado debe estar entre 0.5 y 3.0"
+            )
+        return value
+
+
+class PerfilCreateSerializer(serializers.ModelSerializer):
+    """Serializer específico para la creación de perfiles"""
+    
+    class Meta:
+        model = Perfil
+        fields = (
+            'usuario', 'descargar', 'interlineado', 'footer', 
+            'abogado_uno', 'abogado_dos', 'rut_uno', 'rut_dos',
+            'representante_banco', 'rut_representante', 'banco'
+        )
+    
+    def validate_usuario(self, value):
+        """Validar que el usuario no tenga ya un perfil"""
+        if Perfil.objects.filter(usuario=value).exists():
+            raise serializers.ValidationError(
+                "Este usuario ya tiene un perfil asociado"
+            )
+        return value
+    
+    def validate_interlineado(self, value):
+        """Validar que el interlineado esté en un rango válido"""
+        if value < 0.5 or value > 3.0:
+            raise serializers.ValidationError(
+                "El interlineado debe estar entre 0.5 y 3.0"
+            )
+        return value
+
+
+class PerfilUpdateSerializer(serializers.ModelSerializer):
+    """Serializer específico para la actualización de perfiles"""
+    
+    class Meta:
+        model = Perfil
+        fields = (
+            'descargar', 'interlineado', 'footer', 
+            'abogado_uno', 'abogado_dos', 'rut_uno', 'rut_dos',
+            'representante_banco', 'rut_representante', 'banco'
+        )
+    
+    def validate_interlineado(self, value):
+        """Validar que el interlineado esté en un rango válido"""
+        if value < 0.5 or value > 3.0:
+            raise serializers.ValidationError(
+                "El interlineado debe estar entre 0.5 y 3.0"
+            )
+        return value

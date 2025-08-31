@@ -7,8 +7,8 @@ from dj_rest_auth.views import LoginView, LogoutView, PasswordChangeView
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from core.mixins import StandardResponseMixin
-from .models import Usuarios
-from .serializers import UsuariosSerializer, UsuariosCreateSerializer, UsuariosUpdateSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer
+from .models import Usuarios, Perfil
+from .serializers import UsuariosSerializer, UsuariosCreateSerializer, UsuariosUpdateSerializer, CustomPasswordChangeSerializer, GroupSerializer, UserPermissionsSerializer, PerfilSerializer, PerfilCreateSerializer, PerfilUpdateSerializer
 
 class UsuariosViewSet(StandardResponseMixin, viewsets.ModelViewSet):
     queryset = Usuarios.objects.all()
@@ -714,5 +714,282 @@ class UserPermissionsAPIView(StandardResponseMixin, generics.RetrieveAPIView):
                 errors=str(e),
                 message="Error al obtener los permisos del usuario",
                 code="user_permissions_error",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class PerfilViewSet(StandardResponseMixin, viewsets.ModelViewSet):
+    """ViewSet para el modelo Perfil"""
+    queryset = Perfil.objects.all()
+    serializer_class = PerfilSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'pk'
+
+    def get_serializer_class(self):
+        """Usar diferentes serializers según la acción"""
+        if self.action == 'create':
+            return PerfilCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return PerfilUpdateSerializer
+        return PerfilSerializer
+
+    def get_queryset(self):
+        """
+        Filtra los perfiles según el tipo de usuario:
+        - Usuario con grupo Admin: Ve todos los perfiles de su empresa
+        - Superuser: Ve todos los perfiles
+        - Usuario regular: Solo puede ver su propio perfil
+        """
+        user = self.request.user
+        
+        # Si es superuser o staff, mostrar todos los perfiles
+        if user.is_staff or user.is_superuser:
+            return Perfil.objects.all()
+        
+        # Verificar si el usuario tiene el grupo "Admin"
+        if user.groups.filter(name='Admin').exists():
+            # Si tiene grupo Admin y empresa, mostrar perfiles de usuarios de su empresa
+            if hasattr(user, 'empresa') and user.empresa:
+                return Perfil.objects.filter(usuario__empresa=user.empresa)
+            else:
+                # Si no tiene empresa asignada, no mostrar ningún perfil
+                return Perfil.objects.none()
+        
+        # Usuario regular: solo puede ver su propio perfil
+        return Perfil.objects.filter(usuario=user)
+
+    def get_object(self):
+        """Obtener el objeto perfil con validaciones de permisos"""
+        obj = super().get_object()
+        user = self.request.user
+        
+        # Superuser y staff pueden acceder a cualquier perfil
+        if user.is_staff or user.is_superuser:
+            return obj
+        
+        # Admin puede acceder a perfiles de su empresa
+        if user.groups.filter(name='Admin').exists():
+            if hasattr(user, 'empresa') and user.empresa and obj.usuario.empresa == user.empresa:
+                return obj
+        
+        # Usuario regular solo puede acceder a su propio perfil
+        if obj.usuario == user:
+            return obj
+        
+        raise PermissionDenied("No tienes permisos para acceder a este perfil")
+
+    def list(self, request, *args, **kwargs):
+        """Listar perfiles con respuesta estandarizada"""
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            return self.paginated_list_response(
+                request,
+                queryset,
+                self.get_serializer_class(),
+                paginated_message="Listado paginado de perfiles",
+                unpaginated_message="Listado de perfiles obtenido correctamente",
+                code="perfiles_list",
+                error_code="perfiles_list_error"
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener los perfiles",
+                code="perfiles_list_error",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def create(self, request, *args, **kwargs):
+        """Crear un nuevo perfil con respuesta estandarizada"""
+        try:
+            user = request.user
+            data = request.data.copy()
+            
+            # Verificar permisos para crear perfil
+            if 'usuario' in data:
+                usuario_id = data['usuario']
+                
+                # Superuser y staff pueden crear perfiles para cualquier usuario
+                if not (user.is_staff or user.is_superuser):
+                    # Admin puede crear perfiles para usuarios de su empresa
+                    if user.groups.filter(name='Admin').exists():
+                        if hasattr(user, 'empresa') and user.empresa:
+                            try:
+                                usuario_obj = Usuarios.objects.get(id=usuario_id)
+                                if usuario_obj.empresa != user.empresa:
+                                    return self.error_response(
+                                        errors="No puedes crear perfiles para usuarios de otras empresas",
+                                        message="Permisos insuficientes",
+                                        code="perfil_create_forbidden",
+                                        http_status=status.HTTP_403_FORBIDDEN
+                                    )
+                            except Usuarios.DoesNotExist:
+                                return self.error_response(
+                                    errors="Usuario no encontrado",
+                                    message="El usuario especificado no existe",
+                                    code="usuario_not_found",
+                                    http_status=status.HTTP_404_NOT_FOUND
+                                )
+                        else:
+                            return self.error_response(
+                                errors="No tienes empresa asignada",
+                                message="Empresa requerida",
+                                code="empresa_required",
+                                http_status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        # Usuario regular solo puede crear su propio perfil
+                        if int(usuario_id) != user.id:
+                            return self.error_response(
+                                errors="Solo puedes crear tu propio perfil",
+                                message="Permisos insuficientes",
+                                code="perfil_create_forbidden",
+                                http_status=status.HTTP_403_FORBIDDEN
+                            )
+            
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            perfil = serializer.save()
+            
+            return self.success_response(
+                data=PerfilSerializer(perfil).data,
+                message="Perfil creado exitosamente",
+                code="perfil_created",
+                http_status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al crear el perfil",
+                code="perfil_create_error",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def retrieve(self, request, *args, **kwargs):
+        """Obtener un perfil específico con respuesta estandarizada"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            
+            return self.success_response(
+                data=serializer.data,
+                message="Perfil obtenido exitosamente",
+                code="perfil_detail",
+                http_status=status.HTTP_200_OK
+            )
+        except PermissionDenied as e:
+            return self.error_response(
+                errors=str(e),
+                message="Permisos insuficientes",
+                code="perfil_detail_forbidden",
+                http_status=status.HTTP_403_FORBIDDEN
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener el perfil",
+                code="perfil_detail_error",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def update(self, request, *args, **kwargs):
+        """Actualizar un perfil con respuesta estandarizada"""
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            perfil = serializer.save()
+            
+            return self.success_response(
+                data=PerfilSerializer(perfil).data,
+                message="Perfil actualizado exitosamente",
+                code="perfil_updated",
+                http_status=status.HTTP_200_OK
+            )
+                
+        except PermissionDenied as e:
+            return self.error_response(
+                errors=str(e),
+                message="Permisos insuficientes",
+                code="perfil_update_forbidden",
+                http_status=status.HTTP_403_FORBIDDEN
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al actualizar el perfil",
+                code="perfil_update_error",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def partial_update(self, request, *args, **kwargs):
+        """Actualización parcial de un perfil"""
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Eliminar un perfil con respuesta estandarizada"""
+        try:
+            instance = self.get_object()
+            perfil_info = {
+                'id': instance.id,
+                'usuario': instance.usuario.username,
+                'nombre_completo': f"{instance.usuario.first_name} {instance.usuario.last_name}".strip()
+            }
+            
+            instance.delete()
+            
+            return self.success_response(
+                data=perfil_info,
+                message="Perfil eliminado exitosamente",
+                code="perfil_deleted",
+                http_status=status.HTTP_200_OK
+            )
+            
+        except PermissionDenied as e:
+            return self.error_response(
+                errors=str(e),
+                message="Permisos insuficientes",
+                code="perfil_delete_forbidden",
+                http_status=status.HTTP_403_FORBIDDEN
+            )
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al eliminar el perfil",
+                code="perfil_delete_error",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['get'], url_path='me')
+    def my_profile(self, request):
+        """Obtener el perfil del usuario autenticado"""
+        try:
+            user = request.user
+            try:
+                perfil = Perfil.objects.get(usuario=user)
+                serializer = self.get_serializer(perfil)
+                
+                return self.success_response(
+                    data=serializer.data,
+                    message="Tu perfil obtenido exitosamente",
+                    code="my_profile_detail",
+                    http_status=status.HTTP_200_OK
+                )
+            except Perfil.DoesNotExist:
+                return self.error_response(
+                    errors="No tienes un perfil creado",
+                    message="Perfil no encontrado",
+                    code="profile_not_found",
+                    http_status=status.HTTP_404_NOT_FOUND
+                )
+                
+        except Exception as e:
+            return self.error_response(
+                errors=str(e),
+                message="Error al obtener tu perfil",
+                code="my_profile_error",
                 http_status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

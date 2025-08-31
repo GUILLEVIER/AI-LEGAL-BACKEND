@@ -1,7 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    ConvertDocxToHtmlView, ConvertImageToHtmlView, ConvertPdfToHtmlView,
     DocumentoSubidoViewSet,
     CampoDisponibleViewSet,
     PlantillaDocumentoViewSet,
@@ -9,6 +8,7 @@ from .views import (
     PlantillaFavoritaViewSet, TipoPlantillaDocumentoListAPIView,
     #TipoPlantillaDocumentoViewSet,
     PlantillaCompartidaViewSet,
+    CategoriaPlantillaDocumentoListAPIView, 
     #ClasificacionPlantillaGeneralViewSet,
     PlantillaGeneralViewSet,
     ClasificacionPlantillaGeneralListAPIView,
@@ -33,7 +33,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('tipos-plantilla/', TipoPlantillaDocumentoListAPIView.as_view(), name='tipos-plantilla-list'),
     path('clasificacion-plantillas-generales/', ClasificacionPlantillaGeneralListAPIView.as_view(), name='clasificacion-plantillas-generales-list'),
-    #path('docx_to_html/', ConvertDocxToHtmlView.as_view(), name='docx_to_html'),
-    #path('image_to_html/', ConvertImageToHtmlView.as_view(), name='image_to_html'),
-    #path('pdf_to_html/', ConvertPdfToHtmlView.as_view(), name='pdf_to_html'),
+    path('categorias-plantilla/', CategoriaPlantillaDocumentoListAPIView.as_view(), name='categorias-plantilla-list'),
 ]

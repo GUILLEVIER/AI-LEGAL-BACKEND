@@ -83,6 +83,8 @@ class PlantillaDocumento(models.Model):
     html_con_campos = models.TextField()
     usuario = models.ForeignKey(Usuarios, on_delete=models.CASCADE)
     tipo = models.ForeignKey(TipoPlantillaDocumento, on_delete=models.SET_NULL, null=True, blank=True)
+    clasificacion = models.ForeignKey('ClasificacionPlantillaGeneral', on_delete=models.SET_NULL, null=True, blank=True)
+    categoria = models.ForeignKey('CategoriaPlantillaDocumento', on_delete=models.SET_NULL, null=True, blank=True)
     fecha_creacion = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -435,3 +437,15 @@ class PlantillaGeneralCompartida(models.Model):
         if not self.esta_vigente():
             return PlantillaDocumento.objects.none()
         return self.plantilla_general.plantillas_incluidas.all()
+
+class CategoriaPlantillaDocumento(models.Model):
+    id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        managed = True
+        db_table = 'categorias_plantillas_documentos'
+        verbose_name_plural = 'Categorias de Plantillas'
+    
+    def __str__(self):
+        return self.nombre
