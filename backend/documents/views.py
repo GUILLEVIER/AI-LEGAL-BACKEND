@@ -139,7 +139,7 @@ class DocumentoSubidoViewSet(StandardResponseMixin, viewsets.ModelViewSet):
                 )
             elif nombre_archivo.endswith(('.jpg', '.jpeg', '.png', '.gif')):
                 tipo = 'imagen'
-                #ESTO ES PARA PRUEBA REUNION DEL 22
+                 #ESTO ES PARA PRUEBA REUNION DEL 22
                 return self.error_response(
                     errors="Solo se permiten archivos docx",
                     message="Archivo requerido",
