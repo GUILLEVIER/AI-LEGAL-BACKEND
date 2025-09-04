@@ -24,24 +24,8 @@ class UsuariosSerializer(serializers.ModelSerializer):
 
 
 
-class UsuariosCreateSerializer(serializers.ModelSerializer):
-    """Serializer específico para la creación de usuarios que permite escribir empresa y grupos"""
-    empresa = serializers.IntegerField(required=False, allow_null=True, write_only=True)
-    grupos = serializers.ListField(
-        child=serializers.IntegerField(),
-        required=False,
-        allow_empty=True,
-        write_only=True
-    )
-    
-    class Meta:
-        model = Usuarios
-        fields = (
-            "id", "username", "email", "first_name", "last_name", "empresa", "password", "grupos"
-        )
-        extra_kwargs = {
-            'password': {'write_only': True}
-        }
+class BaseUsuariosSerializer(serializers.ModelSerializer):
+    """Clase base para serializers de usuarios con validaciones comunes"""
     
     def validate(self, attrs):
         """Validación general para manejar empresa y grupos"""
@@ -62,6 +46,26 @@ class UsuariosCreateSerializer(serializers.ModelSerializer):
             attrs['grupos'] = valid_group_ids
         
         return attrs
+
+
+class UsuariosCreateSerializer(BaseUsuariosSerializer):
+    """Serializer específico para la creación de usuarios que permite escribir empresa y grupos"""
+    empresa = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    grupos = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+        write_only=True
+    )
+    
+    class Meta:
+        model = Usuarios
+        fields = (
+            "id", "username", "email", "first_name", "last_name", "empresa", "password", "grupos"
+        )
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
     
     def create(self, validated_data):
         from companies.models import Empresas
@@ -93,7 +97,7 @@ class UsuariosCreateSerializer(serializers.ModelSerializer):
         return usuario
 
 
-class UsuariosUpdateSerializer(serializers.ModelSerializer):
+class UsuariosUpdateSerializer(BaseUsuariosSerializer):
     """Serializer específico para la actualización de usuarios que permite escribir empresa y grupos"""
     empresa = serializers.IntegerField(required=False, allow_null=True, write_only=True)
     grupos = serializers.ListField(
@@ -112,26 +116,6 @@ class UsuariosUpdateSerializer(serializers.ModelSerializer):
             'username': {'required': False},
             'email': {'required': False},
         }
-    
-    def validate(self, attrs):
-        """Validación general para manejar empresa y grupos"""
-        # Validar empresa
-        if 'empresa' in attrs and attrs['empresa'] == 0:
-            attrs['empresa'] = None
-        
-        # Validar grupos
-        if 'grupos' in attrs:
-            valid_group_ids = []
-            for group_id in attrs['grupos']:
-                if group_id != 0:
-                    try:
-                        Group.objects.get(id=group_id)
-                        valid_group_ids.append(group_id)
-                    except Group.DoesNotExist:
-                        continue
-            attrs['grupos'] = valid_group_ids
-        
-        return attrs
     
     def update(self, instance, validated_data):
         from companies.models import Empresas
