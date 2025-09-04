@@ -24,14 +24,38 @@ class UsuariosSerializer(serializers.ModelSerializer):
 
 
 
-class UsuariosCreateSerializer(serializers.ModelSerializer):
+class BaseUsuariosSerializer(serializers.ModelSerializer):
+    """Clase base para serializers de usuarios con validaciones comunes"""
+    
+    def validate(self, attrs):
+        """Validación general para manejar empresa y grupos"""
+        # Validar empresa
+        if 'empresa' in attrs and attrs['empresa'] == 0:
+            attrs['empresa'] = None
+        
+        # Validar grupos
+        if 'grupos' in attrs:
+            valid_group_ids = []
+            for group_id in attrs['grupos']:
+                if group_id != 0:
+                    try:
+                        Group.objects.get(id=group_id)
+                        valid_group_ids.append(group_id)
+                    except Group.DoesNotExist:
+                        continue
+            attrs['grupos'] = valid_group_ids
+        
+        return attrs
+
+
+class UsuariosCreateSerializer(BaseUsuariosSerializer):
     """Serializer específico para la creación de usuarios que permite escribir empresa y grupos"""
-    grupos = serializers.PrimaryKeyRelatedField(
-        queryset=Group.objects.all(),
-        many=True,
+    empresa = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    grupos = serializers.ListField(
+        child=serializers.IntegerField(),
         required=False,
         allow_empty=True,
-        source='groups'  # Mapea el campo 'grupos' al atributo 'groups' del modelo
+        write_only=True
     )
     
     class Meta:
@@ -44,9 +68,19 @@ class UsuariosCreateSerializer(serializers.ModelSerializer):
         }
     
     def create(self, validated_data):
-        # Extraer la contraseña y grupos para manejarlos por separado
+        from companies.models import Empresas
+        
+        # Extraer la contraseña, empresa y grupos para manejarlos por separado
         password = validated_data.pop('password', None)
-        groups_data = validated_data.pop('groups', [])
+        empresa_id = validated_data.pop('empresa', None)
+        groups_data = validated_data.pop('grupos', [])
+        
+        # Convertir empresa_id a objeto Empresa si se proporcionó
+        if empresa_id:
+            try:
+                validated_data['empresa'] = Empresas.objects.get(id=empresa_id)
+            except Empresas.DoesNotExist:
+                pass  # Se mantiene como None si no existe
         
         # Crear el usuario
         usuario = Usuarios.objects.create(**validated_data)
@@ -63,14 +97,14 @@ class UsuariosCreateSerializer(serializers.ModelSerializer):
         return usuario
 
 
-class UsuariosUpdateSerializer(serializers.ModelSerializer):
-    """Serializer específico para la actualización de usuarios que permite manejar grupos"""
-    grupos = serializers.PrimaryKeyRelatedField(
-        queryset=Group.objects.all(),
-        many=True,
+class UsuariosUpdateSerializer(BaseUsuariosSerializer):
+    """Serializer específico para la actualización de usuarios que permite escribir empresa y grupos"""
+    empresa = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    grupos = serializers.ListField(
+        child=serializers.IntegerField(),
         required=False,
         allow_empty=True,
-        source='groups'  # Mapea el campo 'grupos' al atributo 'groups' del modelo
+        write_only=True
     )
     
     class Meta:
@@ -84,8 +118,21 @@ class UsuariosUpdateSerializer(serializers.ModelSerializer):
         }
     
     def update(self, instance, validated_data):
-        # Extraer grupos si están presentes
-        groups_data = validated_data.pop('groups', None)
+        from companies.models import Empresas
+        
+        # Extraer empresa y grupos si están presentes
+        empresa_id = validated_data.pop('empresa', None)
+        groups_data = validated_data.pop('grupos', None)
+        
+        # Convertir empresa_id a objeto Empresa si se proporcionó
+        if empresa_id is not None:
+            if empresa_id:
+                try:
+                    validated_data['empresa'] = Empresas.objects.get(id=empresa_id)
+                except Empresas.DoesNotExist:
+                    pass  # Se mantiene el valor actual si no existe
+            else:
+                validated_data['empresa'] = None
         
         # Actualizar campos básicos
         for attr, value in validated_data.items():
